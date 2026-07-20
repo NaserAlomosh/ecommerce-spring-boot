@@ -1,5 +1,6 @@
 package com.smart.ecommerce.config;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -14,6 +15,9 @@ import org.springframework.util.unit.DataUnit;
 @ConfigurationProperties(prefix = "app.file-storage")
 public class FileStorageProperties {
     @NotBlank
+    private String type = "local";
+
+    @NotBlank
     private String uploadDir = "uploads";
 
     @DataSizeUnit(DataUnit.MEGABYTES)
@@ -21,4 +25,16 @@ public class FileStorageProperties {
 
     @Min(0)
     private int maxImagesPerProduct = 10;
+
+    @Valid
+    private Cloudinary cloudinary = new Cloudinary();
+
+    @Getter
+    @Setter
+    public static class Cloudinary {
+        private String cloudName = "";
+        private String apiKey = "";
+        private String apiSecret = "";
+        private String folder = "products";
+    }
 }
