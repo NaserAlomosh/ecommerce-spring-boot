@@ -78,6 +78,21 @@ app:
       api-secret: ${CLOUDINARY_API_SECRET:}
       folder: ${CLOUDINARY_FOLDER:products}
 
+  business-time-zone: ${BUSINESS_TIME_ZONE:Asia/Amman}
+  reports:
+    max-pdf-rows: ${REPORTS_MAX_PDF_ROWS:5000}
+    default-export-range-days: ${REPORTS_DEFAULT_EXPORT_RANGE_DAYS:31}
+    max-export-range-days: ${REPORTS_MAX_EXPORT_RANGE_DAYS:366}
+    company-name: ${REPORTS_COMPANY_NAME:Smart E-Commerce}
+    logo-path: ${REPORTS_LOGO_PATH:}
+    footer-text: ${REPORTS_FOOTER_TEXT:Confidential administrative report}
+    vip-min-spending: ${REPORTS_VIP_MIN_SPENDING:1000.00}
+    vip-min-orders: ${REPORTS_VIP_MIN_ORDERS:10}
+    pdf:
+      regular-font: ${REPORTS_PDF_REGULAR_FONT:classpath:fonts/DejaVuSans.ttf.base64}
+      bold-font: ${REPORTS_PDF_BOLD_FONT:classpath:fonts/DejaVuSans.ttf.base64}
+      arabic-font: ${REPORTS_PDF_ARABIC_FONT:classpath:fonts/DejaVuSans.ttf.base64}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
