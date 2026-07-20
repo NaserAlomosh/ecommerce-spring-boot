@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**")
                         .hasAnyRole("ADMIN", "SUB_ADMIN")
-                        .requestMatchers("/api/v1/customer/cart/**", "/api/v1/customer/wishlist/**")
+                        .requestMatchers("/api/v1/customer/cart/**", "/api/v1/customer/wishlist/**", "/api/v1/customer/addresses/**")
                         .hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/users/**")
                         .authenticated()

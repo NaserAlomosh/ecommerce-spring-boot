@@ -577,3 +577,55 @@ Check response example:
 ```
 
 Validation and business rules: `productId` is required, deleted products are treated as not found, adding the same product twice is idempotent, and inactive or out-of-stock products may remain in the wishlist while exposing current `active`, `inStock`, and `availableStock` fields. Common errors include `Product not found` and `Wishlist item not found`; non-`CUSTOMER` roles receive `403 Forbidden`.
+
+## Customer Addresses API
+
+Customer address endpoints are available to authenticated `CUSTOMER` users only at `/api/v1/customer/addresses`. The customer is always resolved from the JWT; requests must not send `customerId`, `defaultAddress`, or `active`. Jordan-only operation is represented by city and location coordinates, so address payloads intentionally do not include country, label, building, floor, apartment, or postal-code fields. Future order creation should copy the selected address data into an order-address snapshot instead of referencing `customer_addresses` directly.
+
+### Address fields
+
+Required request fields:
+
+- `recipientName` - max 150 characters.
+- `phoneNumber` - max 20 characters; stored exactly as received.
+- `city` - max 100 characters.
+- `latitude` - decimal value from -90 to 90.
+- `longitude` - decimal value from -180 to 180.
+
+Optional request fields:
+
+- `area` - max 100 characters.
+- `street` - max 255 characters.
+- `additionalDirections` - max 500 characters.
+
+Address responses include `id`, the request fields, `defaultAddress`, `createdAt`, and `updatedAt`.
+
+### Endpoints
+
+- `GET /api/v1/customer/addresses` returns active addresses with the default address first and remaining addresses newest first.
+- `GET /api/v1/customer/addresses/{id}` returns one owned active address.
+- `POST /api/v1/customer/addresses` creates an address. The first active address automatically becomes the default; later addresses are not default.
+- `PUT /api/v1/customer/addresses/{id}` updates editable address fields only.
+- `PATCH /api/v1/customer/addresses/{id}/default` makes the selected active address the only default address.
+- `DELETE /api/v1/customer/addresses/{id}` soft deletes an owned address. If it was default, the newest remaining active address becomes default; if none remain, no default address is set.
+
+### Create address example
+
+```http
+POST /api/v1/customer/addresses
+Authorization: Bearer <customerAccessToken>
+Content-Type: application/json
+```
+
+```json
+{
+  "recipientName": "Naser Alomosh",
+  "phoneNumber": "0791234567",
+  "city": "Amman",
+  "latitude": 31.9975,
+  "longitude": 35.8372,
+  "area": "Khalda",
+  "street": "Wasfi Al Tal Street",
+  "additionalDirections": "Near the pharmacy"
+}
+```
