@@ -22,6 +22,7 @@ public class Product extends BaseEntity {
     @Column(columnDefinition = "TEXT") private String descriptionAr;
     @Column(nullable = false, unique = true) private String sku;
     @Column(nullable = false, precision = 19, scale = 2) private BigDecimal price;
+    @Column(nullable = false, length = 3) private String currency = com.smart.ecommerce.enums.CurrencyCode.DEFAULT_CURRENCY;
     @Column(precision = 19, scale = 2) private BigDecimal discountPrice;
     @Column(nullable = false) private int stockQuantity;
     @Column(nullable = false) private int lowStockThreshold;
