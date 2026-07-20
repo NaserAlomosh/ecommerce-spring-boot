@@ -17,8 +17,8 @@ public class Product extends BaseEntity {
     private Category category;
     @Column(nullable = false) private String nameEn;
     @Column(nullable = false) private String nameAr;
-    @Lob private String descriptionEn;
-    @Lob private String descriptionAr;
+    @Column(columnDefinition = "TEXT") private String descriptionEn;
+    @Column(columnDefinition = "TEXT") private String descriptionAr;
     @Column(nullable = false, unique = true) private String sku;
     @Column(nullable = false, precision = 19, scale = 2) private BigDecimal price;
     @Column(precision = 19, scale = 2) private BigDecimal discountPrice;
