@@ -632,3 +632,94 @@ Content-Type: application/json
   "additionalDirections": "Near the pharmacy"
 }
 ```
+
+## Orders API
+
+Orders are created from the authenticated customer's active cart and selected active address. The backend recalculates all item prices from current product data, snapshots product and address details, requires a single `JOD` currency, deducts stock inside the creation transaction with pessimistic product locks, then clears the cart only after the order is saved. Duplicate form submissions are not backed by a generic idempotency-key framework; failed transactions roll back and order numbers are protected by a unique constraint.
+
+### Status lifecycle
+
+`PENDING -> CONFIRMED -> PROCESSING -> READY_FOR_DELIVERY -> COMPLETED`
+
+Cancellation rules:
+
+* `CUSTOMER` may cancel only `PENDING` orders.
+* `ADMIN` may cancel `PENDING`, `CONFIRMED`, or `PROCESSING` orders.
+* `READY_FOR_DELIVERY`, `COMPLETED`, and `CANCELLED` orders cannot be cancelled.
+* Cancellation restores product stock once and appends order status history.
+
+### Customer endpoints (`ROLE_CUSTOMER`)
+
+* `POST /api/v1/customer/orders` creates an order from the active cart.
+
+```json
+{
+  "addressId": 3,
+  "customerNotes": "Please call before delivery"
+}
+```
+
+* `GET /api/v1/customer/orders?status=PENDING&page=0&size=20` lists the customer's orders newest first.
+* `GET /api/v1/customer/orders/{orderId}` returns one owned order with items and address snapshot.
+* `GET /api/v1/customer/orders/number/{orderNumber}` returns one owned order by public order number.
+* `PATCH /api/v1/customer/orders/{orderId}/cancel` cancels a pending order.
+
+```json
+{ "reason": "Ordered by mistake" }
+```
+
+* `GET /api/v1/customer/orders/{orderId}/history` returns status history oldest first.
+
+### Admin endpoints (`ROLE_ADMIN`)
+
+* `GET /api/v1/admin/orders?status=PENDING&orderNumber=ORD&customer=naser&fromDate=2026-07-01T00:00:00Z&toDate=2026-07-31T23:59:59Z&page=0&size=20` lists and filters all orders newest first.
+* `GET /api/v1/admin/orders/{orderId}` returns complete details.
+* `GET /api/v1/admin/orders/number/{orderNumber}` returns complete details by order number.
+* `PATCH /api/v1/admin/orders/{orderId}/status` advances an order through the allowed lifecycle.
+
+```json
+{ "status": "CONFIRMED", "note": "Order reviewed and confirmed" }
+```
+
+* `PATCH /api/v1/admin/orders/{orderId}/cancel` cancels an eligible order.
+* `GET /api/v1/admin/orders/{orderId}/history` returns full history.
+
+### Example order response
+
+```json
+{
+  "id": 25,
+  "orderNumber": "ORD-20260721-A8F3K2",
+  "status": "PENDING",
+  "currency": "JOD",
+  "subtotal": 45.000,
+  "deliveryFee": 0.000,
+  "discountAmount": 0.000,
+  "totalAmount": 45.000,
+  "totalItems": 3,
+  "customerNotes": "Please call before delivery",
+  "address": {
+    "recipientName": "Naser Alomosh",
+    "phoneNumber": "0791234567",
+    "city": "Amman",
+    "latitude": 31.9975000,
+    "longitude": 35.8372000,
+    "area": "Khalda",
+    "street": "Wasfi Al Tal Street",
+    "additionalDirections": "Near the pharmacy"
+  },
+  "items": [
+    {
+      "productId": 10,
+      "productName": "Wireless Headphones",
+      "productImageUrl": "https://example.com/image.jpg",
+      "quantity": 2,
+      "unitPrice": 20.000,
+      "currency": "JOD",
+      "lineTotal": 40.000
+    }
+  ]
+}
+```
+
+Typical validation errors include empty cart, address not found/inactive/not owned, product inactive/unavailable, insufficient stock, invalid price, unsupported or mixed currencies, invalid status transition, and forbidden role access. Errors use the existing `ApiResponse` failure wrapper.
