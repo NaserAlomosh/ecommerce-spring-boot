@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: ecommerce-spring-boot
   profiles:
@@ -29,11 +31,15 @@ spring:
         smtp:
           starttls:
             enable: ${SMTP_TLS:false}
+            required: ${SMTP_STARTTLS_REQUIRED:true}
           ssl:
             enable: ${SMTP_SSL:false}
-          connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:5000}
-          timeout: ${SMTP_TIMEOUT:5000}
-          writetimeout: ${SMTP_WRITE_TIMEOUT:5000}
+          connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:10000}
+          timeout: ${SMTP_TIMEOUT:60000}
+          writetimeout: ${SMTP_WRITE_TIMEOUT:60000}
+    retry:
+      max-attempts: ${SMTP_RETRY_MAX_ATTEMPTS:2}
+      backoff-millis: ${SMTP_RETRY_BACKOFF_MILLIS:1000}
 
 server:
   port: ${SERVER_PORT:8080}
