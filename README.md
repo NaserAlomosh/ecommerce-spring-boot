@@ -50,7 +50,7 @@ http://localhost:8080/swagger-ui.html
 
 ### Gmail SMTP setup
 
-To send the verification OTP from Gmail after registration, configure SMTP with a Gmail App Password. Do **not** commit the real App Password to git; keep it in your local `.env` or deployment secrets.
+To send the verification OTP from Gmail after registration, configure SMTP with a Gmail App Password. Do **not** commit the real App Password to git; keep it in your local `.env` or deployment secrets. The application imports an optional `.env` file from the working directory, so IntelliJ run configurations should use the project root as the working directory or define these variables directly in the run configuration.
 
 ```bash
 SMTP_HOST=smtp.gmail.com
@@ -62,7 +62,7 @@ SMTP_TLS=true
 SMTP_SSL=false
 ```
 
-If sending fails, registration now fails and the server logs the SMTP error instead of silently ignoring it.
+If these variables are not loaded, Spring Mail falls back to `localhost:25`, which causes `Connection refused` unless a local SMTP server is running. If sending fails, registration now fails and the server logs the SMTP error instead of silently ignoring it.
 
 ## Verification
 
