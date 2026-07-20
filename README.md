@@ -118,3 +118,272 @@ This module provides the e-commerce identity foundation for exactly three roles:
 
 ### MySQL/Flyway
 Migration `V2__auth_user_management.sql` creates `users`, `refresh_tokens`, `email_otps`, `password_reset_tokens`, and `social_accounts` using snake_case names, unique constraints, indexes, and foreign keys.
+
+### API localization headers
+All API responses can be returned in English or Arabic by sending `Accept-Language`. Use `en` for English or `ar` for Arabic. Authenticated endpoints also require an `Authorization: Bearer <accessToken>` header.
+
+Common headers:
+
+```http
+Content-Type: application/json
+Accept: application/json
+Accept-Language: en
+```
+
+Arabic example:
+
+```http
+Content-Type: application/json
+Accept: application/json
+Accept-Language: ar
+```
+
+### Authentication API examples
+
+#### Register customer
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "firstName": "Sara",
+  "lastName": "Ali",
+  "email": "sara@example.com",
+  "phoneNumber": "+962790000001",
+  "password": "Str0ngPassword!"
+}
+```
+
+#### Login
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+Accept-Language: ar
+```
+
+```json
+{
+  "email": "sara@example.com",
+  "password": "Str0ngPassword!"
+}
+```
+
+#### Refresh token
+
+```http
+POST /api/v1/auth/refresh
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "refreshToken": "refresh-token-from-login"
+}
+```
+
+#### Logout
+
+```http
+POST /api/v1/auth/logout
+Content-Type: application/json
+Authorization: Bearer <accessToken>
+Accept-Language: en
+```
+
+```json
+{
+  "refreshToken": "active-refresh-token"
+}
+```
+
+#### Verify email OTP
+
+```http
+POST /api/v1/auth/verify-email
+Content-Type: application/json
+Accept-Language: ar
+```
+
+```json
+{
+  "email": "sara@example.com",
+  "otp": "123456"
+}
+```
+
+#### Resend email OTP
+
+```http
+POST /api/v1/auth/resend-email-otp
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "email": "sara@example.com"
+}
+```
+
+#### Forgot password
+
+```http
+POST /api/v1/auth/forgot-password
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "email": "sara@example.com"
+}
+```
+
+#### Verify password reset OTP
+
+```http
+POST /api/v1/auth/verify-password-reset-otp
+Content-Type: application/json
+Accept-Language: ar
+```
+
+```json
+{
+  "email": "sara@example.com",
+  "otp": "123456"
+}
+```
+
+#### Reset password
+
+```http
+POST /api/v1/auth/reset-password
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "resetToken": "temporary-reset-token",
+  "newPassword": "N3wStrongPassword!"
+}
+```
+
+#### Social login
+
+```http
+POST /api/v1/auth/social-login
+Content-Type: application/json
+Accept-Language: en
+```
+
+```json
+{
+  "provider": "GOOGLE",
+  "identityToken": "provider-id-token",
+  "nonce": "optional-client-nonce"
+}
+```
+
+### Profile API examples
+
+#### Get my profile
+
+```http
+GET /api/v1/users/me
+Authorization: Bearer <accessToken>
+Accept-Language: ar
+```
+
+#### Update my profile
+
+```http
+PUT /api/v1/users/me
+Content-Type: application/json
+Authorization: Bearer <accessToken>
+Accept-Language: en
+```
+
+```json
+{
+  "firstName": "Sara",
+  "lastName": "Hassan",
+  "phoneNumber": "+962790000002",
+  "profileImage": "https://cdn.example.com/profiles/sara.png"
+}
+```
+
+#### Change my password
+
+```http
+PUT /api/v1/users/me/password
+Content-Type: application/json
+Authorization: Bearer <accessToken>
+Accept-Language: en
+```
+
+```json
+{
+  "currentPassword": "Str0ngPassword!",
+  "newPassword": "N3wStrongPassword!"
+}
+```
+
+### Admin API examples
+
+#### Create user
+
+```http
+POST /api/v1/admin/users
+Content-Type: application/json
+Authorization: Bearer <adminAccessToken>
+Accept-Language: ar
+```
+
+```json
+{
+  "firstName": "Omar",
+  "lastName": "Saleh",
+  "email": "driver@example.com",
+  "phoneNumber": "+962790000003",
+  "password": "Str0ngPassword!",
+  "role": "DELIVERY"
+}
+```
+
+#### Search users
+
+```http
+GET /api/v1/admin/users?q=sara&role=CUSTOMER&status=ACTIVE&page=0&size=20&sort=createdAt,desc
+Authorization: Bearer <adminAccessToken>
+Accept-Language: en
+```
+
+#### Get user by ID
+
+```http
+GET /api/v1/admin/users/1
+Authorization: Bearer <adminAccessToken>
+Accept-Language: en
+```
+
+#### Update user status
+
+```http
+PATCH /api/v1/admin/users/1/status
+Content-Type: application/json
+Authorization: Bearer <adminAccessToken>
+Accept-Language: ar
+```
+
+```json
+{
+  "status": "BLOCKED"
+}
+```
