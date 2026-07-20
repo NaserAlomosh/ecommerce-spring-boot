@@ -28,6 +28,25 @@ public final class ProductDtos {
         }
     }
 
+    public record ProductUpdateRequest(
+            @NotNull Long categoryId,
+            @NotBlank String nameEn,
+            @NotBlank String nameAr,
+            String descriptionEn,
+            String descriptionAr,
+            @NotBlank String sku,
+            @NotNull @DecimalMin(value = "0.0", inclusive = false) BigDecimal price,
+            @Size(min = 3, max = 3) String currency,
+            @DecimalMin(value = "0.0", inclusive = false) BigDecimal discountPrice,
+            @Min(0) int stockQuantity,
+            @Min(0) int lowStockThreshold,
+            boolean active,
+            boolean featured) {
+        public ProductUpdateRequest {
+            currency = CurrencyCode.normalizeNullable(currency);
+        }
+    }
+
     public record ProductImageResponse(Long id, String imageUrl, boolean primaryImage, int sortOrder) {}
 
     public record ProductResponse(

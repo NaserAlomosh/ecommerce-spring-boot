@@ -14,4 +14,5 @@ public interface InventoryHistoryRepository extends JpaRepository<InventoryHisto
  Page<InventoryHistory> search(@Param("productId") Long productId, @Param("type") InventoryMovementType type, @Param("customerId") Long customerId, @Param("orderNumber") String orderNumber, @Param("fromDate") Instant fromDate, @Param("toDate") Instant toDate, Pageable pageable);
  @EntityGraph(attributePaths={"product","order","performedBy"})
  List<InventoryHistory> findByProductIdOrderByCreatedAtDesc(Long productId);
+ boolean existsByOrderIdAndProductIdAndMovementType(Long orderId, Long productId, InventoryMovementType movementType);
 }
