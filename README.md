@@ -455,3 +455,125 @@ Accept-Language: ar
 Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
 
 Image binary data is never stored in MySQL. The `product_images` table stores only the generated public URL and storage path. File names are generated with UUID values and safe extensions derived from validated content types. Product soft deletion retains image files for audit/restoration; physical files are deleted when an image record is explicitly deleted or replaced.
+
+## Customer Cart and Wishlist API
+
+All customer cart and wishlist endpoints require an authenticated JWT with role `CUSTOMER` (`ROLE_CUSTOMER` authority). Requests never accept `customerId`; the customer is derived from the bearer token. Product names and responses include English and Arabic fields (`nameEn`, `nameAr`).
+
+### Cart endpoints
+
+| Method | Endpoint | Role | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/customer/cart` | `CUSTOMER` | Return the active cart, recalculating prices and availability. |
+| `POST` | `/api/v1/customer/cart/items` | `CUSTOMER` | Add a product or increase its quantity. |
+| `PATCH` | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Replace a cart item quantity. |
+| `DELETE` | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Remove one item from the current customer's cart. |
+| `DELETE` | `/api/v1/customer/cart/items` | `CUSTOMER` | Clear all active cart items. |
+
+Add item request:
+
+```json
+{ "productId": 1, "quantity": 2 }
+```
+
+Update quantity request:
+
+```json
+{ "quantity": 3 }
+```
+
+Cart response example:
+
+```json
+{
+  "success": true,
+  "message": "Cart",
+  "data": {
+    "id": 10,
+    "status": "ACTIVE",
+    "items": [
+      {
+        "id": 20,
+        "product": {
+          "id": 1,
+          "nameEn": "Coffee",
+          "nameAr": "قهوة",
+          "sku": "COF-1",
+          "primaryImageUrl": "/uploads/products/coffee.png",
+          "active": true,
+          "inStock": true,
+          "availableStock": 8
+        },
+        "quantity": 2,
+        "unitPrice": 10.00,
+        "discountPrice": 8.00,
+        "effectivePrice": 8.00,
+        "lineTotal": 16.00,
+        "available": true,
+        "quantityExceedsStock": false
+      }
+    ],
+    "totalItems": 2,
+    "distinctItems": 1,
+    "subtotal": 16.00
+  }
+}
+```
+
+Validation and business rules: `productId` is required, `quantity` is required and must be at least `1`, prices are always loaded from the database, inactive/deleted/out-of-stock products cannot be added or updated, and requested quantity cannot exceed current stock. Common errors include `Product not found`, `Product is inactive`, `Product is unavailable`, `Insufficient stock`, and `Cart item not found`.
+
+### Wishlist endpoints
+
+| Method | Endpoint | Role | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/customer/wishlist` | `CUSTOMER` | List wishlist items with current product availability. |
+| `POST` | `/api/v1/customer/wishlist` | `CUSTOMER` | Add a product idempotently. |
+| `DELETE` | `/api/v1/customer/wishlist/{productId}` | `CUSTOMER` | Remove a product from the wishlist. |
+| `GET` | `/api/v1/customer/wishlist/check/{productId}` | `CUSTOMER` | Return whether the product is wishlisted. |
+
+Add wishlist item request:
+
+```json
+{ "productId": 1 }
+```
+
+Wishlist response example:
+
+```json
+{
+  "success": true,
+  "message": "Wishlist",
+  "data": {
+    "items": [
+      {
+        "id": 5,
+        "product": {
+          "id": 1,
+          "categoryId": 2,
+          "nameEn": "Coffee",
+          "nameAr": "قهوة",
+          "sku": "COF-1",
+          "price": 10.00,
+          "discountPrice": 8.00,
+          "effectivePrice": 8.00,
+          "discountPercentage": 20.00,
+          "primaryImageUrl": "/uploads/products/coffee.png",
+          "active": true,
+          "inStock": true,
+          "availableStock": 8
+        },
+        "createdAt": "2026-07-20T00:00:00Z"
+      }
+    ],
+    "totalItems": 1
+  }
+}
+```
+
+Check response example:
+
+```json
+{ "wishlisted": true }
+```
+
+Validation and business rules: `productId` is required, deleted products are treated as not found, adding the same product twice is idempotent, and inactive or out-of-stock products may remain in the wishlist while exposing current `active`, `inStock`, and `availableStock` fields. Common errors include `Product not found` and `Wishlist item not found`; non-`CUSTOMER` roles receive `403 Forbidden`.
