@@ -56,6 +56,18 @@ app:
     password-reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION:15m}
     google-audience: ${GOOGLE_AUDIENCE:}
     apple-audience: ${APPLE_AUDIENCE:}
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+      first-name: ${BOOTSTRAP_ADMIN_FIRST_NAME:System}
+      last-name: ${BOOTSTRAP_ADMIN_LAST_NAME:Admin}
+      email: ${BOOTSTRAP_ADMIN_EMAIL:}
+      phone-number: ${BOOTSTRAP_ADMIN_PHONE:+10000000000}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  file-storage:
+    upload-dir: ${FILE_UPLOAD_DIR:uploads}
+    max-image-size: ${MAX_IMAGE_SIZE:5MB}
+    max-images-per-product: ${MAX_IMAGES_PER_PRODUCT:10}
 
 springdoc:
   swagger-ui:
