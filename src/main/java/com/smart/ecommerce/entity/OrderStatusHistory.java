@@ -1,6 +1,7 @@
 package com.smart.ecommerce.entity;
 
 import com.smart.ecommerce.enums.OrderStatus;
+import com.smart.ecommerce.enums.DeliveryFailureReason;
 import jakarta.persistence.*;
 import java.time.Instant;
 import lombok.Getter;
@@ -15,5 +16,6 @@ public class OrderStatusHistory extends BaseEntity {
  @Column(name="changed_by_user_id", nullable=false) private Long changedByUserId;
  @Column(name="changed_by_role", nullable=false, length=30) private String changedByRole;
  @Column(length=500) private String note;
+ @Enumerated(EnumType.STRING) @Column(name="failure_reason", length=50) private DeliveryFailureReason failureReason;
  @Column(name="changed_at", nullable=false) private Instant changedAt;
 }

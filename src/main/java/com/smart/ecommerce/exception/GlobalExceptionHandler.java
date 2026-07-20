@@ -81,6 +81,6 @@ public class GlobalExceptionHandler {
     }
 
     private String resolveMessage(String message) {
-        return message != null && message.startsWith("error.") ? messageUtil.getMessage(message) : message;
+        return message != null && message.contains(".") ? messageUtil.getMessage(message) : message;
     }
 }
