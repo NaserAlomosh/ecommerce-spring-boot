@@ -1,5 +1,6 @@
 package com.smart.ecommerce.dto.product;
 
+import com.smart.ecommerce.dto.category.CategoryDtos.CategorySummary;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,7 +25,7 @@ public final class ProductDtos {
     public record ProductImageResponse(Long id, String imageUrl, boolean primaryImage, int sortOrder) {}
 
     public record ProductResponse(
-            Long id, Long categoryId, String nameEn, String nameAr, String sku, BigDecimal price,
+            Long id, CategorySummary category, String nameEn, String nameAr, String sku, BigDecimal price,
             BigDecimal discountPrice, BigDecimal effectivePrice, BigDecimal discountPercentage,
             int stockQuantity, int lowStockThreshold, boolean inStock, boolean lowStock,
             boolean active, boolean featured, List<ProductImageResponse> images) {}
