@@ -1,5 +1,6 @@
 package com.smart.ecommerce.config;
 
+import com.smart.ecommerce.dashboard.service.DashboardProperties;
 import com.smart.ecommerce.repository.UserRepository;
 import com.smart.ecommerce.security.JwtAuthenticationFilter;
 import com.smart.ecommerce.security.JwtProperties;
@@ -25,7 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, FileStorageProperties.class, AdminBootstrapProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, FileStorageProperties.class, AdminBootstrapProperties.class, DashboardProperties.class})
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
