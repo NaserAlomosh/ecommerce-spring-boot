@@ -60,9 +60,15 @@ SMTP_PASSWORD=your_16_character_gmail_app_password_without_spaces
 SMTP_FROM=naseralomosh1@gmail.com
 SMTP_TLS=true
 SMTP_SSL=false
+SMTP_CONNECTION_TIMEOUT=10000
+SMTP_TIMEOUT=60000
+SMTP_WRITE_TIMEOUT=60000
+SMTP_STARTTLS_REQUIRED=true
+SMTP_RETRY_MAX_ATTEMPTS=2
+SMTP_RETRY_BACKOFF_MILLIS=1000
 ```
 
-If these variables are not loaded, Spring Mail falls back to `localhost:25`, which causes `Connection refused` unless a local SMTP server is running. If sending fails, registration now fails and the server logs the SMTP error instead of silently ignoring it.
+If these variables are not loaded, Spring Mail falls back to `localhost:25`, which causes `Connection refused` unless a local SMTP server is running. Gmail can also intermittently take longer than a few seconds to return an SMTP response after STARTTLS/authentication/message submission; keep the read/write timeouts above the old 5-second default and allow a small retry count for transient `SocketTimeoutException` failures. If sending still fails, registration fails and the server logs the SMTP error instead of silently ignoring it.
 
 ## Verification
 
