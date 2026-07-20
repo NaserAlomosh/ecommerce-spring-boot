@@ -24,7 +24,8 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductImageRepository imageRepository;
-    private final InventoryMovementRepository inventoryRepository;
+    private final InventoryService inventoryService;
+    private final CustomerContextService customerContextService;
     private final FileStorageService storageService;
     private final FileStorageProperties properties;
 
@@ -39,9 +40,7 @@ public class ProductService {
             if (!category.isActive()) throw new IllegalArgumentException("Product category must be active");
             product.setCategory(category);
             product = productRepository.save(product);
-            InventoryMovement movement = new InventoryMovement();
-            movement.setProduct(product); movement.setMovementType("INITIAL_STOCK"); movement.setQuantity(request.stockQuantity());
-            inventoryRepository.save(movement);
+            inventoryService.recordProductCreated(product, customerContextService.currentCustomer());
             addImages(product, images, stored);
             return toResponse(productRepository.save(product));
         } catch (RuntimeException ex) {
