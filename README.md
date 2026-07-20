@@ -410,3 +410,9 @@ Accept-Language: ar
   "status": "BLOCKED"
 }
 ```
+
+## Product image storage
+
+Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
+
+Image binary data is never stored in MySQL. The `product_images` table stores only the generated public URL and storage path. File names are generated with UUID values and safe extensions derived from validated content types. Product soft deletion retains image files for audit/restoration; physical files are deleted when an image record is explicitly deleted or replaced.
