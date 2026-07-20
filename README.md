@@ -4,7 +4,7 @@ Initial foundation for a production-ready e-commerce backend built with Java 21,
 
 ## Package
 
-Base package: `com.naser.ecommerce`
+Base package: `com.smart.ecommerce`
 
 Created package structure:
 
