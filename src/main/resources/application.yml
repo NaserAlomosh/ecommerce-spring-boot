@@ -56,6 +56,10 @@ app:
     password-reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION:15m}
     google-audience: ${GOOGLE_AUDIENCE:}
     apple-audience: ${APPLE_AUDIENCE:}
+  file-storage:
+    upload-dir: ${FILE_UPLOAD_DIR:uploads}
+    max-image-size: ${MAX_IMAGE_SIZE:5MB}
+    max-images-per-product: ${MAX_IMAGES_PER_PRODUCT:10}
 
 springdoc:
   swagger-ui:
