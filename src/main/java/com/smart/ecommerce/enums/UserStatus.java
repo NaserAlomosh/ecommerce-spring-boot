@@ -1,2 +1,2 @@
 package com.smart.ecommerce.enums;
-public enum UserStatus { ACTIVE, PENDING, BLOCKED }
+public enum UserStatus { ACTIVE, PENDING, BLOCKED, DELETED }

@@ -15,19 +15,20 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/admin/products")
 public class AdminProductController {
     private final ProductService productService;
+    private final com.smart.ecommerce.util.MessageUtil messages;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ProductResponse> createProduct(
             @Valid @RequestPart("product") ProductCreateRequest product,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        return ApiResponse.success("Product created", productService.create(product, images));
+        return ApiResponse.success(messages.getMessage("admin.product_created"), productService.create(product, images));
     }
 
     @PostMapping(value = "/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ProductResponse> uploadImages(
             @PathVariable Long productId,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        return ApiResponse.success("Product images uploaded", productService.uploadImages(productId, images));
+        return ApiResponse.success(messages.getMessage("admin.product_images_uploaded"), productService.uploadImages(productId, images));
     }
 
     @PutMapping(value = "/{productId}/images/{imageId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -35,22 +36,22 @@ public class AdminProductController {
             @PathVariable Long productId,
             @PathVariable Long imageId,
             @RequestPart("image") MultipartFile image) {
-        return ApiResponse.success("Product image replaced", productService.replaceImage(productId, imageId, image));
+        return ApiResponse.success(messages.getMessage("admin.product_image_replaced"), productService.replaceImage(productId, imageId, image));
     }
 
     @PatchMapping("/{productId}/images/{imageId}/primary")
     public ApiResponse<ProductResponse> setPrimary(@PathVariable Long productId, @PathVariable Long imageId) {
-        return ApiResponse.success("Primary image updated", productService.setPrimary(productId, imageId));
+        return ApiResponse.success(messages.getMessage("admin.product_primary_updated"), productService.setPrimary(productId, imageId));
     }
 
     @PatchMapping("/{productId}/images/reorder")
     public ApiResponse<ProductResponse> reorder(@PathVariable Long productId, @Valid @RequestBody ImageOrderRequest request) {
-        return ApiResponse.success("Product images reordered", productService.reorder(productId, request));
+        return ApiResponse.success(messages.getMessage("admin.product_images_reordered"), productService.reorder(productId, request));
     }
 
     @DeleteMapping("/{productId}/images/{imageId}")
     public ApiResponse<Void> deleteImage(@PathVariable Long productId, @PathVariable Long imageId) {
         productService.deleteImage(productId, imageId);
-        return ApiResponse.success("Product image deleted", null);
+        return ApiResponse.success(messages.getMessage("admin.product_image_deleted"), null);
     }
 }

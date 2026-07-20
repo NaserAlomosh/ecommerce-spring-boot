@@ -25,7 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, FileStorageProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, FileStorageProperties.class, AdminBootstrapProperties.class})
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -43,7 +43,7 @@ public class SecurityConfig {
                                 "/uploads/**")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "SUB_ADMIN")
                         .requestMatchers("/api/v1/users/**")
                         .authenticated()
                         .anyRequest()

@@ -47,4 +47,7 @@ public final class UserDtos {
             @NotNull Role role) {}
 
     public record StatusRequest(@NotNull UserStatus status) {}
+
+    public record AdminChangePasswordRequest(
+            @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,72}$") String newPassword) {}
 }
