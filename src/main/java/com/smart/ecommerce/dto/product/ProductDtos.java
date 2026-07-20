@@ -53,7 +53,7 @@ public final class ProductDtos {
             Long id, CategorySummary category, String nameEn, String nameAr, String sku, BigDecimal price,
             String currency, BigDecimal discountPrice, BigDecimal effectivePrice, BigDecimal discountPercentage,
             int stockQuantity, int lowStockThreshold, boolean inStock, boolean lowStock,
-            boolean active, boolean featured, List<ProductImageResponse> images) {}
+            boolean active, boolean featured, BigDecimal averageRating, Integer reviewsCount, List<ProductImageResponse> images) {}
 
     public record ImageOrderRequest(@NotEmpty List<@NotNull Long> imageIds) {}
 }
