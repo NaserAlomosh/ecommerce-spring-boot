@@ -65,9 +65,15 @@ app:
       phone-number: ${BOOTSTRAP_ADMIN_PHONE:+10000000000}
       password: ${BOOTSTRAP_ADMIN_PASSWORD:}
   file-storage:
+    type: ${FILE_STORAGE_TYPE:local}
     upload-dir: ${FILE_UPLOAD_DIR:uploads}
     max-image-size: ${MAX_IMAGE_SIZE:5MB}
     max-images-per-product: ${MAX_IMAGES_PER_PRODUCT:10}
+    cloudinary:
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+      folder: ${CLOUDINARY_FOLDER:products}
 
 springdoc:
   swagger-ui:
