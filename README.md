@@ -452,7 +452,7 @@ Accept-Language: ar
 
 ## Product image storage
 
-Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
+Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Product pricing uses ISO 4217 currency codes: `currency` is optional on creation, defaults to `JOD` when omitted, null, or blank, is normalized to uppercase, and responses that expose prices include currency. Currency symbols such as `JD`, `د.أ`, or `$` are not accepted; currently supported currency codes include `JOD`. Example product request: `{ "nameEn": "Wireless Headphones", "nameAr": "سماعات لاسلكية", "sku": "WH-10", "price": 49.99, "currency": "JOD" }`. Example product response includes `{ "id": 10, "nameEn": "Wireless Headphones", "price": 49.99, "currency": "JOD" }`. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
 
 Image binary data is never stored in MySQL. The `product_images` table stores only the generated public URL and storage path. File names are generated with UUID values and safe extensions derived from validated content types. Product soft deletion retains image files for audit/restoration; physical files are deleted when an image record is explicitly deleted or replaced.
 
@@ -506,6 +506,7 @@ Cart response example:
         },
         "quantity": 2,
         "unitPrice": 10.00,
+        "currency": "JOD",
         "discountPrice": 8.00,
         "effectivePrice": 8.00,
         "lineTotal": 16.00,
@@ -515,12 +516,13 @@ Cart response example:
     ],
     "totalItems": 2,
     "distinctItems": 1,
-    "subtotal": 16.00
+    "subtotal": 16.00,
+    "currency": "JOD"
   }
 }
 ```
 
-Validation and business rules: `productId` is required, `quantity` is required and must be at least `1`, prices are always loaded from the database, inactive/deleted/out-of-stock products cannot be added or updated, and requested quantity cannot exceed current stock. Common errors include `Product not found`, `Product is inactive`, `Product is unavailable`, `Insufficient stock`, and `Cart item not found`.
+Validation and business rules: `productId` is required, `quantity` is required and must be at least `1`, prices and currency are always loaded from the database, cart totals include the cart currency (`JOD` by default), mixed-currency carts are rejected instead of calculating an invalid subtotal, inactive/deleted/out-of-stock products cannot be added or updated, and requested quantity cannot exceed current stock. Common errors include `Product not found`, `Product is inactive`, `Product is unavailable`, `Insufficient stock`, and `Cart item not found`.
 
 ### Wishlist endpoints
 
@@ -554,6 +556,7 @@ Wishlist response example:
           "nameAr": "قهوة",
           "sku": "COF-1",
           "price": 10.00,
+          "currency": "JOD",
           "discountPrice": 8.00,
           "effectivePrice": 8.00,
           "discountPercentage": 20.00,
