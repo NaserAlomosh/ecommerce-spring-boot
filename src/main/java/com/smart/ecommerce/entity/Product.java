@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Getter
 @Setter
@@ -29,5 +30,6 @@ public class Product extends BaseEntity {
     @Column(nullable = false) private boolean deleted;
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
+    @BatchSize(size = 50)
     private List<ProductImage> images = new ArrayList<>();
 }
