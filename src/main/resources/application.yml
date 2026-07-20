@@ -29,6 +29,11 @@ spring:
         smtp:
           starttls:
             enable: ${SMTP_TLS:false}
+          ssl:
+            enable: ${SMTP_SSL:false}
+          connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:5000}
+          timeout: ${SMTP_TIMEOUT:5000}
+          writetimeout: ${SMTP_WRITE_TIMEOUT:5000}
 
 server:
   port: ${SERVER_PORT:8080}
