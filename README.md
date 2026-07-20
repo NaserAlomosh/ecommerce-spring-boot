@@ -64,3 +64,57 @@ curl -H "Accept-Language: en" http://localhost:8080/api/v1/health
 ```
 
 For compatibility with clients that send the custom `accept/language` header, the backend also checks that header when `Accept-Language` is missing. Unsupported or invalid locales fall back to English.
+
+
+## Authentication & User Management
+
+This module provides the e-commerce identity foundation for exactly three roles: `ADMIN`, `CUSTOMER`, and `DELIVERY`. Public registration is restricted to `CUSTOMER`; administrator endpoints create `ADMIN`, `DELIVERY`, or additional `CUSTOMER` accounts.
+
+### Registration and email verification flow
+1. `POST /api/v1/auth/register` creates a `CUSTOMER` with `PENDING` status, `emailVerified=false`, and `phoneVerified=false`. The request never accepts a role.
+2. The backend generates a cryptographically secure six-digit OTP, stores only its BCrypt hash in `email_otps`, and sends it through the configured email service.
+3. `POST /api/v1/auth/verify-email` consumes the OTP, marks the user `ACTIVE`, and sets `emailVerified=true`. Expired, consumed, or over-attempt OTPs are rejected.
+4. `POST /api/v1/auth/resend-email-otp` invalidates prior email-verification OTPs before sending a replacement.
+
+### Forgot password flow
+`POST /api/v1/auth/forgot-password` never reveals whether an email exists. For existing users it sends a `PASSWORD_RESET` OTP. `POST /api/v1/auth/verify-password-reset-otp` consumes the OTP and returns a temporary reset token whose hash is stored in `password_reset_tokens`. `POST /api/v1/auth/reset-password` validates that token, changes the BCrypt password hash, consumes the token, and revokes all refresh tokens.
+
+### JWT and refresh-token rotation
+`POST /api/v1/auth/login` returns a JWT access token and a refresh token. Refresh tokens are stored only as SHA-256 hashes in `refresh_tokens`. `POST /api/v1/auth/refresh` revokes the presented active token and creates a replacement; expired, revoked, or reused refresh tokens are rejected and reuse revokes the user's outstanding refresh tokens. Logout revokes the supplied refresh token. Changing a password or blocking a user revokes all refresh tokens.
+
+### Social login
+`POST /api/v1/auth/social-login` supports `GOOGLE` and `APPLE` for customers only. Provider information is stored in `social_accounts`; `googleId` and `appleId` are intentionally not stored on `users`. Verified provider emails can create or link a `CUSTOMER`; unverified provider emails, existing non-customer accounts, and inactive accounts are rejected. Production deployments must verify issuer, audience, signature, expiration, and nonce server-side for the supplied identity token.
+
+### Required environment variables
+- `JWT_SECRET` - HMAC signing secret for access tokens.
+- `JWT_EXPIRATION_MILLIS` - access-token lifetime, default `900000`.
+- `REFRESH_TOKEN_EXPIRATION` - refresh-token lifetime, default `30d`.
+- `OTP_EXPIRATION` - OTP lifetime, default `5m`.
+- `OTP_MAX_ATTEMPTS` - maximum verification attempts, default `5`.
+- `OTP_RESEND_COOLDOWN` - resend cooldown, default `1m`.
+- `PASSWORD_RESET_TOKEN_EXPIRATION` - temporary reset-token lifetime, default `15m`.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` - SMTP settings for Spring Mail.
+- `GOOGLE_AUDIENCE` - accepted Google OAuth client ID/audience.
+- `APPLE_AUDIENCE` - accepted Apple Services ID/bundle audience.
+
+### Implemented endpoints
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/verify-email`
+- `POST /api/v1/auth/resend-email-otp`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/verify-password-reset-otp`
+- `POST /api/v1/auth/reset-password`
+- `POST /api/v1/auth/social-login`
+- `GET /api/v1/users/me`
+- `PUT /api/v1/users/me`
+- `PUT /api/v1/users/me/password`
+- `POST /api/v1/admin/users`
+- `GET /api/v1/admin/users`
+- `GET /api/v1/admin/users/{id}`
+- `PATCH /api/v1/admin/users/{id}/status`
+
+### MySQL/Flyway
+Migration `V2__auth_user_management.sql` creates `users`, `refresh_tokens`, `email_otps`, `password_reset_tokens`, and `social_accounts` using snake_case names, unique constraints, indexes, and foreign keys.
