@@ -47,6 +47,23 @@ Swagger UI:
 http://localhost:8080/swagger-ui.html
 ```
 
+
+### Gmail SMTP setup
+
+To send the verification OTP from Gmail after registration, configure SMTP with a Gmail App Password. Do **not** commit the real App Password to git; keep it in your local `.env` or deployment secrets.
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=naseralomosh1@gmail.com
+SMTP_PASSWORD=your_16_character_gmail_app_password_without_spaces
+SMTP_FROM=naseralomosh1@gmail.com
+SMTP_TLS=true
+SMTP_SSL=false
+```
+
+If sending fails, registration now fails and the server logs the SMTP error instead of silently ignoring it.
+
 ## Verification
 
 ```bash
