@@ -91,7 +91,7 @@ For compatibility with clients that send the custom `accept/language` header, th
 
 ## Authentication & User Management
 
-This module provides the e-commerce identity foundation for exactly three roles: `ADMIN`, `CUSTOMER`, and `DELIVERY`. Public registration is restricted to `CUSTOMER`; administrator endpoints create `ADMIN`, `DELIVERY`, or additional `CUSTOMER` accounts.
+This module provides the e-commerce identity foundation for four roles: `ADMIN`, `SUB_ADMIN`, `CUSTOMER`, and `DELIVERY`. Public registration is restricted to `CUSTOMER`; administrators create `ADMIN`, `SUB_ADMIN`, `DELIVERY`, or additional `CUSTOMER` accounts. `ADMIN` users can create other admins and sub-admins, reset passwords for sub-admins and drivers, and delete sub-admin, driver, and customer accounts. `SUB_ADMIN` users can create, block, and delete driver and customer accounts only.
 
 ### Registration and email verification flow
 1. `POST /api/v1/auth/register` creates a `CUSTOMER` with `PENDING` status, `emailVerified=false`, and `phoneVerified=false`. The request never accepts a role.
@@ -107,6 +107,20 @@ This module provides the e-commerce identity foundation for exactly three roles:
 
 ### Social login
 `POST /api/v1/auth/social-login` supports `GOOGLE` and `APPLE` for customers only. Provider information is stored in `social_accounts`; `googleId` and `appleId` are intentionally not stored on `users`. Verified provider emails can create or link a `CUSTOMER`; unverified provider emails, existing non-customer accounts, and inactive accounts are rejected. Production deployments must verify issuer, audience, signature, expiration, and nonce server-side for the supplied identity token.
+
+### Creating the first admin account
+Set the bootstrap variables before the first startup. If `BOOTSTRAP_ADMIN_ENABLED=true` and there is no active admin, the application creates one active, email-verified `ADMIN` account automatically. Disable the flag after the first successful startup.
+
+```bash
+BOOTSTRAP_ADMIN_ENABLED=true
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+BOOTSTRAP_ADMIN_PASSWORD=Str0ngPassword!
+BOOTSTRAP_ADMIN_FIRST_NAME=System
+BOOTSTRAP_ADMIN_LAST_NAME=Admin
+BOOTSTRAP_ADMIN_PHONE=+962790000000
+```
+
+Then log in through `POST /api/v1/auth/login` and use the returned access token with `/api/v1/admin/users`.
 
 ### Required environment variables
 - `JWT_SECRET` - HMAC signing secret for access tokens.
@@ -138,6 +152,8 @@ This module provides the e-commerce identity foundation for exactly three roles:
 - `GET /api/v1/admin/users`
 - `GET /api/v1/admin/users/{id}`
 - `PATCH /api/v1/admin/users/{id}/status`
+- `PATCH /api/v1/admin/users/{id}/password`
+- `DELETE /api/v1/admin/users/{id}`
 
 ### MySQL/Flyway
 Migration `V2__auth_user_management.sql` creates `users`, `refresh_tokens`, `email_otps`, `password_reset_tokens`, and `social_accounts` using snake_case names, unique constraints, indexes, and foreign keys.
@@ -394,6 +410,29 @@ Accept-Language: en
 GET /api/v1/admin/users/1
 Authorization: Bearer <adminAccessToken>
 Accept-Language: en
+```
+
+#### Change a managed user password
+
+```http
+PATCH /api/v1/admin/users/2/password
+Content-Type: application/json
+Authorization: Bearer <adminAccessToken>
+Accept-Language: en
+```
+
+```json
+{
+  "newPassword": "N3wStrongPassword!"
+}
+```
+
+#### Delete a managed user
+
+```http
+DELETE /api/v1/admin/users/2
+Authorization: Bearer <adminOrSubAdminAccessToken>
+Accept-Language: ar
 ```
 
 #### Update user status

@@ -63,8 +63,12 @@ public class GlobalExceptionHandler {
             String fallbackMessage,
             Map<String, String> errors
     ) {
-        String message = fallbackMessage == null ? messageUtil.getMessage(code.messageKey()) : fallbackMessage;
+        String message = fallbackMessage == null ? messageUtil.getMessage(code.messageKey()) : resolveMessage(fallbackMessage);
         ApiError error = ApiError.of(code, message, errors);
         return ResponseEntity.status(status).body(ApiResponse.failure(message, error));
+    }
+
+    private String resolveMessage(String message) {
+        return message != null && message.startsWith("error.") ? messageUtil.getMessage(message) : message;
     }
 }
