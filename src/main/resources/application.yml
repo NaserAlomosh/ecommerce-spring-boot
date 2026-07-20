@@ -18,14 +18,33 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:25}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    from: ${SMTP_FROM:no-reply@example.com}
+    properties:
+      mail:
+        smtp:
+          starttls:
+            enable: ${SMTP_TLS:false}
 
 server:
   port: ${SERVER_PORT:8080}
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
-    expiration-millis: ${JWT_EXPIRATION_MILLIS:86400000}
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+    expiration-millis: ${JWT_EXPIRATION_MILLIS:900000}
+  auth:
+    refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:30d}
+    otp-expiration: ${OTP_EXPIRATION:5m}
+    otp-resend-cooldown: ${OTP_RESEND_COOLDOWN:1m}
+    otp-max-attempts: ${OTP_MAX_ATTEMPTS:5}
+    password-reset-token-expiration: ${PASSWORD_RESET_TOKEN_EXPIRATION:15m}
+    google-audience: ${GOOGLE_AUDIENCE:}
+    apple-audience: ${APPLE_AUDIENCE:}
 
 springdoc:
   swagger-ui:

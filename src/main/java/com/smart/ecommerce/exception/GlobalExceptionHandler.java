@@ -8,6 +8,8 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +40,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<ApiError>> handleNotFound(ResourceNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, BadCredentialsException.class})
+    public ResponseEntity<ApiResponse<ApiError>> handleBadRequest(Exception ex) {
+        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<ApiError>> handleDenied(AccessDeniedException ex) {
+        return build(HttpStatus.FORBIDDEN, ErrorCode.VALIDATION_ERROR, ex.getMessage(), null);
     }
 
     @ExceptionHandler(Exception.class)
