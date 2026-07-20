@@ -24,6 +24,11 @@ public class AdminProductController {
         return ApiResponse.success(messages.getMessage("admin.product_created"), productService.create(product, images));
     }
 
+    @PutMapping("/{productId}")
+    public ApiResponse<ProductResponse> updateProduct(@PathVariable Long productId, @Valid @RequestBody ProductUpdateRequest product) {
+        return ApiResponse.success(messages.getMessage("admin.product_updated"), productService.update(productId, product));
+    }
+
     @PostMapping(value = "/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<ProductResponse> uploadImages(
             @PathVariable Long productId,
