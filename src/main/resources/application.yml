@@ -64,6 +64,9 @@ app:
       email: ${BOOTSTRAP_ADMIN_EMAIL:}
       phone-number: ${BOOTSTRAP_ADMIN_PHONE:+10000000000}
       password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+
+  dashboard:
+    low-stock-threshold: ${DASHBOARD_LOW_STOCK_THRESHOLD:10}
   file-storage:
     type: ${FILE_STORAGE_TYPE:local}
     upload-dir: ${FILE_UPLOAD_DIR:uploads}
