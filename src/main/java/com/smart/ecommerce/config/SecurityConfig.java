@@ -38,6 +38,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/**",
                                 "/api/v1/health",
                                 "/api/v1/categories/**",
+                                "/api/v1/products/*/reviews",
+                                "/api/v1/products/*/rating-summary",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -47,7 +49,7 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "SUB_ADMIN")
                         .requestMatchers("/api/v1/admin/**")
                         .hasAnyRole("ADMIN", "SUB_ADMIN")
-                        .requestMatchers("/api/v1/customer/cart/**", "/api/v1/customer/wishlist/**", "/api/v1/customer/addresses/**", "/api/v1/customer/orders/**")
+                        .requestMatchers("/api/v1/customer/cart/**", "/api/v1/customer/wishlist/**", "/api/v1/customer/addresses/**", "/api/v1/customer/orders/**", "/api/v1/customers/me/reviews", "/api/v1/reviews/**")
                         .hasRole("CUSTOMER")
                         .requestMatchers("/api/v1/delivery/**")
                         .hasRole("DELIVERY")

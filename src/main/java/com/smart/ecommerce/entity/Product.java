@@ -29,6 +29,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false) private boolean active;
     @Column(nullable = false) private boolean featured;
     @Column(nullable = false) private boolean deleted;
+    @Column(name = "rating_sum", nullable = false) private Long ratingSum = 0L;
+    @Column(name = "reviews_count", nullable = false) private Integer reviewsCount = 0;
+    @Column(name = "average_rating", nullable = false, precision = 3, scale = 2) private BigDecimal averageRating = BigDecimal.ZERO.setScale(2);
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     @BatchSize(size = 50)
