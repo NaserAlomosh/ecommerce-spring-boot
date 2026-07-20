@@ -2,6 +2,7 @@ CREATE TABLE orders (
     id BIGINT NOT NULL AUTO_INCREMENT,
     order_number VARCHAR(30) NOT NULL,
     customer_id BIGINT NOT NULL,
+    assigned_delivery_user_id BIGINT NULL,
     status VARCHAR(30) NOT NULL,
     currency VARCHAR(3) NOT NULL,
     subtotal DECIMAL(19,3) NOT NULL,
@@ -9,7 +10,9 @@ CREATE TABLE orders (
     discount_amount DECIMAL(19,3) NOT NULL,
     total_amount DECIMAL(19,3) NOT NULL,
     total_items INT NOT NULL,
-    customer_notes VARCHAR(1000),
+    customer_note VARCHAR(1000),
+    failure_reason VARCHAR(50),
+    failure_note VARCHAR(500),
     cancellation_reason VARCHAR(500),
     cancelled_at TIMESTAMP(6) NULL,
     completed_at TIMESTAMP(6) NULL,
@@ -27,6 +30,7 @@ CREATE TABLE orders (
     PRIMARY KEY (id),
     CONSTRAINT uk_orders_order_number UNIQUE (order_number),
     CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES users(id),
+    CONSTRAINT fk_orders_delivery_user FOREIGN KEY (assigned_delivery_user_id) REFERENCES users(id),
     CONSTRAINT chk_orders_subtotal CHECK (subtotal >= 0),
     CONSTRAINT chk_orders_delivery_fee CHECK (delivery_fee >= 0),
     CONSTRAINT chk_orders_discount_amount CHECK (discount_amount >= 0),
@@ -39,6 +43,7 @@ CREATE INDEX idx_orders_customer ON orders(customer_id);
 CREATE INDEX idx_orders_customer_created ON orders(customer_id, created_at);
 CREATE INDEX idx_orders_customer_status ON orders(customer_id, status);
 CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_delivery_user_status ON orders(assigned_delivery_user_id, status);
 CREATE INDEX idx_orders_created ON orders(created_at);
 
 CREATE TABLE order_items (
@@ -70,6 +75,7 @@ CREATE TABLE order_status_history (
     changed_by_user_id BIGINT NOT NULL,
     changed_by_role VARCHAR(30) NOT NULL,
     note VARCHAR(500),
+    failure_reason VARCHAR(50),
     changed_at TIMESTAMP(6) NOT NULL,
     created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
