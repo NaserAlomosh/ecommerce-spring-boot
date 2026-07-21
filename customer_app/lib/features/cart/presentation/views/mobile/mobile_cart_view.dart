@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/presentation/base_view.dart';
 
 import '../../../../../core/design_system/app_spacing.dart';
 import '../../../../../core/responsive/content_containers.dart';
 
-class MobileCartView extends StatelessWidget {
+class MobileCartView extends BaseView {
   const MobileCartView({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildView(BuildContext context) {
     return MobileContentContainer(
       child: ListView(
         children: [

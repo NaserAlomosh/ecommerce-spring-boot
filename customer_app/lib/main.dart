@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/presentation/base_view.dart';
 
 import 'core/design_system/app_theme.dart';
 import 'core/routing/app_routes.dart';
@@ -10,11 +11,11 @@ void main() {
   runApp(const CustomerEcommerceApp());
 }
 
-class CustomerEcommerceApp extends StatelessWidget {
+class CustomerEcommerceApp extends BaseView {
   const CustomerEcommerceApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildView(BuildContext context) {
     return BlocProvider(
       create: (_) => CustomerShellCubit(),
       child: MaterialApp(

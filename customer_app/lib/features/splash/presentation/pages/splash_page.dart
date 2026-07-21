@@ -2,26 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_spacing.dart';
+import '../../../../core/presentation/base_view.dart';
 import '../../../../core/routing/app_routes.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends BaseView {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
-}
-
-class _SplashPageState extends State<SplashPage> {
-  @override
-  void initState() {
-    super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 700), () {
-      if (mounted) Navigator.of(context).pushReplacementNamed(AppRoutes.shell);
+  Widget buildView(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 700), () {
+        if (context.mounted) Navigator.of(context).pushReplacementNamed(AppRoutes.shell);
+      });
     });
-  }
 
-  @override
-  Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
         child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../core/presentation/base_view.dart';
 
 import '../../../../../core/design_system/app_colors.dart';
 import '../../../../../core/design_system/app_icons.dart';
@@ -11,11 +12,11 @@ import '../../../../../features/categories/presentation/pages/categories_page.da
 import '../../../../../features/home/presentation/pages/home_page.dart';
 import '../../../../../features/profile/presentation/pages/profile_page.dart';
 
-class WebNavigationShell extends StatelessWidget {
+class WebNavigationShell extends BaseView {
   const WebNavigationShell({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildView(BuildContext context) {
     return BlocBuilder<CustomerShellCubit, CustomerShellTab>(
       builder: (context, tab) {
         return Scaffold(

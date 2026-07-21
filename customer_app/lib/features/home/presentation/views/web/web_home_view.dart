@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/presentation/base_view.dart';
 
 import '../../../../../core/design_system/app_spacing.dart';
 import '../../../../../core/responsive/content_containers.dart';
 
-class WebHomeView extends StatelessWidget {
+class WebHomeView extends BaseView {
   const WebHomeView({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildView(BuildContext context) {
     return WebContentContainer(
       child: ListView(
         children: [
