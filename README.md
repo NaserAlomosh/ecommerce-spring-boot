@@ -108,6 +108,9 @@ This module provides the e-commerce identity foundation for four roles: `ADMIN`,
 ### Social login
 `POST /api/v1/auth/social-login` supports `GOOGLE` and `APPLE` for customers only. Provider information is stored in `social_accounts`; `googleId` and `appleId` are intentionally not stored on `users`. Verified provider emails can create or link a `CUSTOMER`; unverified provider emails, existing non-customer accounts, and inactive accounts are rejected. Production deployments must verify issuer, audience, signature, expiration, and nonce server-side for the supplied identity token.
 
+#### External authentication verification
+Google and Apple social-login checks depend on external OAuth credentials, valid provider tokens, configured audiences, callback URLs, and provider availability. During local or CI verification, run these checks only when the required `GOOGLE_AUDIENCE`, `APPLE_AUDIENCE`, and provider-issued test tokens are available. If those dependencies are not available, record each affected provider as `Skipped (External Dependency)` with the missing configuration or service as the reason, and continue verifying the rest of the system. Do not remove or weaken either provider implementation solely because the external dependency cannot be reached in the current environment.
+
 ### Creating the first admin account
 Set the bootstrap variables before the first startup. If `BOOTSTRAP_ADMIN_ENABLED=true` and there is no active admin, the application creates one active, email-verified `ADMIN` account automatically. Disable the flag after the first successful startup.
 
