@@ -1,0 +1,2 @@
+import { getData } from '@/lib/api/client'; import { endpoints } from '@/lib/api/endpoints'; import type { Page, Product, Category } from '@/types/api';
+export const productService={list:(params?:Record<string,unknown>)=>getData<Page<Product>>(endpoints.products,params),get:(id:string)=>getData<Product>(`${endpoints.products}/${id}`),categories:()=>getData<Page<Category>|Category[]>(endpoints.categories)};

@@ -1,0 +1,1 @@
+import { Sidebar } from '@/components/layout/sidebar'; import { asLocale } from '@/lib/i18n/routing'; export default function DeliveryLayout({children,params}:{children:React.ReactNode;params:{locale:string}}){return <div className="shell"><Sidebar locale={asLocale(params.locale)} mode="delivery"/><main className="main">{children}</main></div>}

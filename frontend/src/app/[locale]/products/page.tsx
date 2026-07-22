@@ -1,0 +1,2 @@
+import { asLocale } from '@/lib/i18n/routing'; import { productService } from '@/features/products/product-service'; import { ProductGrid } from '@/features/products/product-grid';
+export default async function Products({params,searchParams}:{params:{locale:string};searchParams:Record<string,string>}){const locale=asLocale(params.locale); let products=[]; try{products=(await productService.list(searchParams)).content}catch{} return <section className="container grid"><h1>{locale==='ar'?'المنتجات':'Products'}</h1><ProductGrid products={products} locale={locale}/></section>}

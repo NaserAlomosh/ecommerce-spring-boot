@@ -1,0 +1,1 @@
+import { Sidebar } from '@/components/layout/sidebar'; import { asLocale } from '@/lib/i18n/routing'; export default function AccountLayout({children,params}:{children:React.ReactNode;params:{locale:string}}){return <div className="shell"><Sidebar locale={asLocale(params.locale)} mode="customer"/><main className="main">{children}</main></div>}

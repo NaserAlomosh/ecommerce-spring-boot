@@ -1,0 +1,1 @@
+import { ResourcePage } from '@/features/admin/resource-page'; import { endpoints } from '@/lib/api/endpoints'; export default function Page(){return <ResourcePage title="Admin Users" url={endpoints.admin.users} actions/>}

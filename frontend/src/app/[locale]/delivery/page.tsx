@@ -1,0 +1,1 @@
+import { ResourcePage } from '@/features/admin/resource-page'; import { endpoints } from '@/lib/api/endpoints'; export default function Delivery(){return <ResourcePage title="Delivery Orders" url={endpoints.delivery.orders} actions/>}

@@ -1,0 +1,6 @@
+export type Locale='ar'|'en'; export type Role='ADMIN'|'SUB_ADMIN'|'CUSTOMER'|'DELIVERY';
+export type ApiResponse<T>={success:boolean;message:string;data:T;timestamp:string}; export type Page<T>={content:T[];page:number;size:number;totalElements:number;totalPages:number;first:boolean;last:boolean};
+export type Category={id:number;nameEn:string;nameAr:string;slug?:string;active?:boolean}; export type ProductImage={id:number;imageUrl:string;primaryImage:boolean;sortOrder:number};
+export type Product={id:number;category?:Category;nameEn:string;nameAr:string;sku:string;price:number;currency:string;discountPrice?:number;effectivePrice:number;discountPercentage?:number;stockQuantity:number;lowStockThreshold:number;inStock:boolean;lowStock:boolean;active:boolean;featured:boolean;averageRating?:number;reviewsCount?:number;images:ProductImage[]};
+export type User={id:number;firstName:string;lastName:string;email:string;phoneNumber?:string;role:Role;status?:string;emailVerified?:boolean};
+export type Tokens={accessToken:string;refreshToken:string;expiresInMillis:number}; export type Order={id?:number;orderNumber:string;status:string;total?:number;grandTotal?:number;createdAt?:string;items?:unknown[]};

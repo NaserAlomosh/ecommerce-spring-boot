@@ -1,0 +1,1 @@
+import { asLocale } from '@/lib/i18n/routing'; import { Nav } from '@/components/layout/nav'; export default function LocaleLayout({children,params}:{children:React.ReactNode;params:{locale:string}}){const locale=asLocale(params.locale); return <main className={locale==='ar'?'rtl':'ltr'}><Nav locale={locale}/>{children}</main>}
