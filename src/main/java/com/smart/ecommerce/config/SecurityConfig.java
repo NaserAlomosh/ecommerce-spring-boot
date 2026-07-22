@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -40,13 +41,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(a -> a.requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/health",
-                                "/api/v1/categories/**",
-                                "/api/v1/products/*/reviews",
-                                "/api/v1/products/*/rating-summary",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/uploads/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/categories/**",
+                                "/api/v1/products",
+                                "/api/v1/products/*",
+                                "/api/v1/products/*/reviews",
+                                "/api/v1/products/*/rating-summary")
                         .permitAll()
                         .requestMatchers("/api/v1/products/*/inventory-history")
                         .hasAnyRole("ADMIN", "SUB_ADMIN")
