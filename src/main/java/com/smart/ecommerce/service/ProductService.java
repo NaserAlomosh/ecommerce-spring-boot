@@ -1,6 +1,7 @@
 package com.smart.ecommerce.service;
 
 import com.smart.ecommerce.config.FileStorageProperties;
+import com.smart.ecommerce.dto.PaginationResponse;
 import com.smart.ecommerce.dto.category.CategoryDtos.CategorySummary;
 import com.smart.ecommerce.dto.product.ProductDtos.*;
 import com.smart.ecommerce.entity.*;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +30,27 @@ public class ProductService {
     private final CustomerContextService customerContextService;
     private final FileStorageService storageService;
     private final FileStorageProperties properties;
+
+
+    @Transactional(readOnly = true)
+    public PaginationResponse<ProductResponse> listPublic(Long categoryId, Boolean featured, Pageable pageable) {
+        var page = categoryId == null
+                ? (featured == null
+                        ? productRepository.findByActiveTrueAndCategory_ActiveTrue(pageable)
+                        : productRepository.findByActiveTrueAndCategory_ActiveTrueAndFeatured(featured, pageable))
+                : (featured == null
+                        ? productRepository.findByActiveTrueAndCategory_ActiveTrueAndCategory_Id(categoryId, pageable)
+                        : productRepository.findByActiveTrueAndCategory_ActiveTrueAndCategory_IdAndFeatured(categoryId, featured, pageable));
+        return PaginationResponse.from(page.map(this::toResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse getPublic(Long productId) {
+        Product product = productRepository.findWithImagesById(productId)
+                .filter(p -> p.isActive() && p.getCategory().isActive())
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        return toResponse(product);
+    }
 
     @Transactional
     public ProductResponse create(ProductCreateRequest request, List<MultipartFile> images) {
