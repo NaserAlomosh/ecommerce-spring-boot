@@ -1,8 +1,69 @@
 package com.smart.ecommerce.report.repository;
-import com.smart.ecommerce.report.util.ReportGranularity;import jakarta.persistence.*;import java.math.BigDecimal;import java.sql.Timestamp;import java.time.*;import java.util.*;import org.springframework.stereotype.Repository;
-@Repository public class CustomerReviewReportQueryRepository{private final EntityManager em; public CustomerReviewReportQueryRepository(EntityManager em){this.em=em;}
- public List<TrendCount> customerTrend(Instant f,Instant t,ReportGranularity g,ZoneId z){return count("users","role='CUSTOMER'",f,t,g,z);} public List<TrendRating> reviewTrend(Instant f,Instant t,ReportGranularity g,ZoneId z){String fmt=fmt(g);var q=em.createNativeQuery("select date_format(convert_tz(created_at,'+00:00',:tz),'"+fmt+"') label,min(created_at),count(*),coalesce(avg(rating),0) from reviews where created_at>=:f and created_at<:t group by label order by 2").setParameter("tz",z.getRules().getOffset(f).getId()).setParameter("f",Timestamp.from(f)).setParameter("t",Timestamp.from(t));List<TrendRating> out=new ArrayList<>();for(Object r:q.getResultList()){Object[] a=(Object[])r;out.add(new TrendRating((String)a[0],((Timestamp)a[1]).toInstant(),((Number)a[2]).longValue(),(BigDecimal)a[3]));}return out;}
- private List<TrendCount> count(String table,String where,Instant f,Instant t,ReportGranularity g,ZoneId z){String fmt=fmt(g);var q=em.createNativeQuery("select date_format(convert_tz(created_at,'+00:00',:tz),'"+fmt+"') label,min(created_at),count(*) from "+table+" where "+where+" and created_at>=:f and created_at<:t group by label order by 2").setParameter("tz",z.getRules().getOffset(f).getId()).setParameter("f",Timestamp.from(f)).setParameter("t",Timestamp.from(t));List<TrendCount> out=new ArrayList<>();for(Object r:q.getResultList()){Object[] a=(Object[])r;out.add(new TrendCount((String)a[0],((Timestamp)a[1]).toInstant(),((Number)a[2]).longValue()));}return out;}
- private String fmt(ReportGranularity g){return switch(g){case HOUR->"%Y-%m-%d %H:00";case DAY->"%Y-%m-%d";case WEEK->"%x-W%v";case MONTH->"%Y-%m";case YEAR->"%Y";};}
- public record TrendCount(String label,Instant start,long count){} public record TrendRating(String label,Instant start,long count,BigDecimal avg){}
+import com.smart.ecommerce.report.util.ReportGranularity;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.*;
+import java.util.*;
+import org.springframework.stereotype.Repository;
+@Repository
+public class CustomerReviewReportQueryRepository {
+  private final EntityManager em;
+  public CustomerReviewReportQueryRepository(EntityManager em) { this.em = em; }
+  public List<TrendCount> customerTrend(Instant f, Instant t,
+                                        ReportGranularity g, ZoneId z) {
+    return count("users", "role='CUSTOMER'", f, t, g, z);
+  }
+  public List<TrendRating> reviewTrend(Instant f, Instant t,
+                                       ReportGranularity g, ZoneId z) {
+    String fmt = fmt(g);
+    var q =
+        em.createNativeQuery(
+              "select date_format(convert_tz(created_at,'+00:00',:tz),'" + fmt +
+              ("') label,min(created_at),count(*),coalesce(avg(rating),0) " +
+               "from reviews where created_at>=:f and created_at<:t group by " +
+               "label order by 2"))
+            .setParameter("tz", z.getRules().getOffset(f).getId())
+            .setParameter("f", Timestamp.from(f))
+            .setParameter("t", Timestamp.from(t));
+    List<TrendRating> out = new ArrayList<>();
+    for (Object r : q.getResultList()) {
+      Object[] a = (Object[])r;
+      out.add(new TrendRating((String)a[0], ((Timestamp)a[1]).toInstant(),
+                              ((Number)a[2]).longValue(), (BigDecimal)a[3]));
+    }
+    return out;
+  }
+  private List<TrendCount> count(String table, String where, Instant f,
+                                 Instant t, ReportGranularity g, ZoneId z) {
+    String fmt = fmt(g);
+    var q = em.createNativeQuery(
+                  "select date_format(convert_tz(created_at,'+00:00',:tz),'" +
+                  fmt + "') label,min(created_at),count(*) from " + table +
+                  " where " + where +
+                  (" and created_at>=:f and created_at<:t group by label " +
+                   "order by 2"))
+                .setParameter("tz", z.getRules().getOffset(f).getId())
+                .setParameter("f", Timestamp.from(f))
+                .setParameter("t", Timestamp.from(t));
+    List<TrendCount> out = new ArrayList<>();
+    for (Object r : q.getResultList()) {
+      Object[] a = (Object[])r;
+      out.add(new TrendCount((String)a[0], ((Timestamp)a[1]).toInstant(),
+                             ((Number)a[2]).longValue()));
+    }
+    return out;
+  }
+  private String fmt(ReportGranularity g) {
+    return switch (g) {
+      case HOUR -> "%Y-%m-%d %H:00";
+      case DAY -> "%Y-%m-%d";
+      case WEEK -> "%x-W%v";
+      case MONTH -> "%Y-%m";
+      case YEAR -> "%Y";
+    };
+  }
+  public record TrendCount(String label, Instant start, long count) {}
+  public record TrendRating(String label, Instant start, long count,
+                            BigDecimal avg) {}
 }

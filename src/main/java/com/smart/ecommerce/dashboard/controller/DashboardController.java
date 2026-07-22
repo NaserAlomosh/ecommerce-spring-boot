@@ -18,13 +18,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/dashboard")
 @Tag(name = "Admin Dashboard")
 public class DashboardController {
-    private final DashboardService service;
-    private final MessageUtil messages;
+  private final DashboardService service;
+  private final MessageUtil messages;
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get dashboard overview", security = @SecurityRequirement(name = "bearerAuth"))
-    public ApiResponse<DashboardResponse> overview() {
-        return ApiResponse.success(messages.getMessage("dashboard.loaded"), service.overview());
-    }
+  @GetMapping
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Get dashboard overview",
+             security = @SecurityRequirement(name = "bearerAuth"))
+  public ApiResponse<DashboardResponse>
+  overview() {
+    return ApiResponse.success(messages.getMessage("dashboard.loaded"),
+                               service.overview());
+  }
 }

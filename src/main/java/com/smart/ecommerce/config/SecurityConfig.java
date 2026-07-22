@@ -10,13 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -29,69 +29,82 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JwtProperties.class, AuthProperties.class, FileStorageProperties.class, AdminBootstrapProperties.class, DashboardProperties.class, ReportProperties.class, BusinessTimeProperties.class})
+@EnableConfigurationProperties(
+    {JwtProperties.class, AuthProperties.class, FileStorageProperties.class,
+     AdminBootstrapProperties.class, DashboardProperties.class,
+     ReportProperties.class, BusinessTimeProperties.class})
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider)
-            throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(a -> a.requestMatchers(
-                                "/api/v1/auth/**",
-                                "/api/v1/health",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/uploads/**")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET,
-                                "/api/v1/categories/**",
-                                "/api/v1/products",
-                                "/api/v1/products/*",
-                                "/api/v1/products/*/reviews",
-                                "/api/v1/products/*/rating-summary")
-                        .permitAll()
-                        .requestMatchers("/api/v1/products/*/inventory-history")
-                        .hasAnyRole("ADMIN", "SUB_ADMIN")
-                        .requestMatchers("/api/v1/admin/**")
-                        .hasAnyRole("ADMIN", "SUB_ADMIN")
-                        .requestMatchers("/api/v1/customer/cart/**", "/api/v1/customer/wishlist/**", "/api/v1/customer/addresses/**", "/api/v1/customer/orders/**", "/api/v1/customers/me/reviews", "/api/v1/reviews/**")
-                        .hasRole("CUSTOMER")
-                        .requestMatchers("/api/v1/delivery/**")
-                        .hasRole("DELIVERY")
-                        .requestMatchers("/api/v1/users/**")
-                        .authenticated()
-                        .anyRequest()
-                        .authenticated())
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
+  @Bean
+  public SecurityFilterChain
+  securityFilterChain(HttpSecurity http,
+                      AuthenticationProvider authenticationProvider)
+      throws Exception {
+    return http.csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(
+            a
+            -> a.requestMatchers("/api/v1/auth/**", "/api/v1/health",
+                                 "/v3/api-docs/**", "/swagger-ui/**",
+                                 "/swagger-ui.html", "/uploads/**")
+                   .permitAll()
+                   .requestMatchers(HttpMethod.GET, "/api/v1/categories/**",
+                                    "/api/v1/products", "/api/v1/products/*",
+                                    "/api/v1/products/*/reviews",
+                                    "/api/v1/products/*/rating-summary")
+                   .permitAll()
+                   .requestMatchers("/api/v1/products/*/inventory-history")
+                   .hasAnyRole("ADMIN", "SUB_ADMIN")
+                   .requestMatchers("/api/v1/admin/**")
+                   .hasAnyRole("ADMIN", "SUB_ADMIN")
+                   .requestMatchers("/api/v1/customer/cart/**",
+                                    "/api/v1/customer/wishlist/**",
+                                    "/api/v1/customer/addresses/**",
+                                    "/api/v1/customer/orders/**",
+                                    "/api/v1/customers/me/reviews",
+                                    "/api/v1/reviews/**")
+                   .hasRole("CUSTOMER")
+                   .requestMatchers("/api/v1/delivery/**")
+                   .hasRole("DELIVERY")
+                   .requestMatchers("/api/v1/users/**")
+                   .authenticated()
+                   .anyRequest()
+                   .authenticated())
+        .authenticationProvider(authenticationProvider)
+        .addFilterBefore(jwtAuthenticationFilter,
+                         UsernamePasswordAuthenticationFilter.class)
+        .build();
+  }
 
-    @Bean
-    public AuthenticationProvider authenticationProvider(UserDetailsService uds, PasswordEncoder pe) {
-        DaoAuthenticationProvider p = new DaoAuthenticationProvider();
-        p.setUserDetailsService(uds);
-        p.setPasswordEncoder(pe);
-        return p;
-    }
+  @Bean
+  public AuthenticationProvider authenticationProvider(UserDetailsService uds,
+                                                       PasswordEncoder pe) {
+    DaoAuthenticationProvider p = new DaoAuthenticationProvider();
+    p.setUserDetailsService(uds);
+    p.setPasswordEncoder(pe);
+    return p;
+  }
 
-    @Bean
-    public UserDetailsService userDetailsService(UserRepository repo) {
-        return email -> {
-            var u = repo.findByEmail(email.toLowerCase()).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            return org.springframework.security.core.userdetails.User.withUsername(u.getEmail())
-                    .password(u.getPasswordHash())
-                    .disabled(u.getStatus() != com.smart.ecommerce.enums.UserStatus.ACTIVE)
-                    .authorities("ROLE_" + u.getRole().name())
-                    .build();
-        };
-    }
+  @Bean
+  public UserDetailsService userDetailsService(UserRepository repo) {
+    return email -> {
+      var u = repo.findByEmail(email.toLowerCase())
+                  .orElseThrow(
+                      () -> new UsernameNotFoundException("User not found"));
+      return org.springframework.security.core.userdetails.User
+          .withUsername(u.getEmail())
+          .password(u.getPasswordHash())
+          .disabled(u.getStatus() !=
+                    com.smart.ecommerce.enums.UserStatus.ACTIVE)
+          .authorities("ROLE_" + u.getRole().name())
+          .build();
+    };
+  }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 }

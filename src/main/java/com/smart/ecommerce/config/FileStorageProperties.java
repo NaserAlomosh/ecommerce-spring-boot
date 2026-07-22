@@ -14,27 +14,23 @@ import org.springframework.util.unit.DataUnit;
 @Setter
 @ConfigurationProperties(prefix = "app.file-storage")
 public class FileStorageProperties {
-    @NotBlank
-    private String type = "local";
+  @NotBlank private String type = "local";
 
-    @NotBlank
-    private String uploadDir = "uploads";
+  @NotBlank private String uploadDir = "uploads";
 
-    @DataSizeUnit(DataUnit.MEGABYTES)
-    private DataSize maxImageSize = DataSize.ofMegabytes(5);
+  @DataSizeUnit(DataUnit.MEGABYTES)
+  private DataSize maxImageSize = DataSize.ofMegabytes(5);
 
-    @Min(0)
-    private int maxImagesPerProduct = 10;
+  @Min(0) private int maxImagesPerProduct = 10;
 
-    @Valid
-    private Cloudinary cloudinary = new Cloudinary();
+  @Valid private Cloudinary cloudinary = new Cloudinary();
 
-    @Getter
-    @Setter
-    public static class Cloudinary {
-        private String cloudName = "";
-        private String apiKey = "";
-        private String apiSecret = "";
-        private String folder = "products";
-    }
+  @Getter
+  @Setter
+  public static class Cloudinary {
+    private String cloudName = "";
+    private String apiKey = "";
+    private String apiSecret = "";
+    private String folder = "products";
+  }
 }

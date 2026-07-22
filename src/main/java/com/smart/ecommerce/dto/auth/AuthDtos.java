@@ -8,36 +8,40 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public final class AuthDtos {
-    private AuthDtos() {}
+  private AuthDtos() {}
 
-    public record RegisterRequest(
-            @NotBlank @Size(min = 2, max = 80) String firstName,
-            @NotBlank @Size(min = 2, max = 80) String lastName,
-            @Email @NotBlank String email,
-            @NotBlank @Pattern(regexp = "^\\+?[0-9]{8,15}$") String phoneNumber,
-            @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,72}$") String password) {}
+  public record RegisterRequest(
+      @NotBlank @Size(min = 2, max = 80) String firstName,
+      @NotBlank @Size(min = 2, max = 80) String lastName,
+      @Email @NotBlank String email,
+      @NotBlank @Pattern(regexp = "^\\+?[0-9]{8,15}$") String phoneNumber,
+      @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,72}$")
+      String password) {}
 
-    public record LoginRequest(@Email @NotBlank String email, @NotBlank String password) {}
+  public record LoginRequest(@Email @NotBlank String email,
+                             @NotBlank String password) {}
 
-    public record TokenResponse(String accessToken, String refreshToken, long expiresInMillis) {}
+  public record TokenResponse(String accessToken, String refreshToken,
+                              long expiresInMillis) {}
 
-    public record RefreshRequest(@NotBlank String refreshToken) {}
+  public record RefreshRequest(@NotBlank String refreshToken) {}
 
-    public record LogoutRequest(@NotBlank String refreshToken) {}
+  public record LogoutRequest(@NotBlank String refreshToken) {}
 
-    public record EmailOtpRequest(
-            @Email @NotBlank String email,
-            @NotBlank @Pattern(regexp = "^[0-9]{6}$") String otp) {}
+  public record EmailOtpRequest(@Email @NotBlank String email,
+                                @NotBlank @Pattern(regexp = "^[0-9]{6}$")
+                                String otp) {}
 
-    public record EmailRequest(@Email @NotBlank String email) {}
+  public record EmailRequest(@Email @NotBlank String email) {}
 
-    public record ResetOtpResponse(String resetToken) {}
+  public record ResetOtpResponse(String resetToken) {}
 
-    public record ResetPasswordRequest(
-            @NotBlank String resetToken,
-            @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,72}$")
-                    String newPassword) {}
+  public record ResetPasswordRequest(
+      @NotBlank String resetToken,
+      @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,72}$")
+      String newPassword) {}
 
-    public record SocialLoginRequest(
-            @NotNull SocialProvider provider, @NotBlank String identityToken, String nonce) {}
+  public record SocialLoginRequest(@NotNull SocialProvider provider,
+                                   @NotBlank String identityToken,
+                                   String nonce) {}
 }

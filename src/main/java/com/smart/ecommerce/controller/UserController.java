@@ -19,28 +19,31 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
-    private final UserService users;
-    private final MessageUtil messages;
+  private final UserService users;
+  private final MessageUtil messages;
 
-    @GetMapping("/me")
-    public ApiResponse<UserResponse> me(Authentication authentication) {
-        return success("user.profile", users.me(authentication.getName()));
-    }
+  @GetMapping("/me")
+  public ApiResponse<UserResponse> me(Authentication authentication) {
+    return success("user.profile", users.me(authentication.getName()));
+  }
 
-    @PutMapping("/me")
-    public ApiResponse<UserResponse> update(
-            Authentication authentication, @Valid @RequestBody UpdateProfileRequest request) {
-        return success("user.profile_updated", users.updateMe(authentication.getName(), request));
-    }
+  @PutMapping("/me")
+  public ApiResponse<UserResponse>
+  update(Authentication authentication,
+         @Valid @RequestBody UpdateProfileRequest request) {
+    return success("user.profile_updated",
+                   users.updateMe(authentication.getName(), request));
+  }
 
-    @PutMapping("/me/password")
-    public ApiResponse<Void> password(
-            Authentication authentication, @Valid @RequestBody ChangePasswordRequest request) {
-        users.changePassword(authentication.getName(), request);
-        return success("user.password_changed", null);
-    }
+  @PutMapping("/me/password")
+  public ApiResponse<Void>
+  password(Authentication authentication,
+           @Valid @RequestBody ChangePasswordRequest request) {
+    users.changePassword(authentication.getName(), request);
+    return success("user.password_changed", null);
+  }
 
-    private <T> ApiResponse<T> success(String messageKey, T data) {
-        return ApiResponse.success(messages.getMessage(messageKey), data);
-    }
+  private <T> ApiResponse<T> success(String messageKey, T data) {
+    return ApiResponse.success(messages.getMessage(messageKey), data);
+  }
 }

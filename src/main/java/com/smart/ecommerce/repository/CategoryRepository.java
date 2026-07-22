@@ -7,9 +7,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-    List<Category> findByActiveTrue(Sort sort);
+  List<Category> findByActiveTrue(Sort sort);
 
-    Optional<Category> findByNameEnIgnoreCase(String nameEn);
+  Optional<Category> findByNameEnIgnoreCase(String nameEn);
 
-    Optional<Category> findByNameArIgnoreCase(String nameAr);
+  Optional<Category> findByNameArIgnoreCase(String nameAr);
 }
