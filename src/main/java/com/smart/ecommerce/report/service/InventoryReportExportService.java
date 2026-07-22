@@ -1,11 +1,12 @@
 package com.smart.ecommerce.report.service;
-import com.smart.ecommerce.report.dto.InventoryFilters.*;
+import com.smart.ecommerce.report.dto.InventoryFilters.Current;
+import com.smart.ecommerce.report.dto.InventoryFilters.Movement;
+import com.smart.ecommerce.report.dto.InventoryFilters.Period;
 import com.smart.ecommerce.report.dto.InventoryReportDtos.*;
 import com.smart.ecommerce.report.dto.ReportDtos.ExportedReport;
 import com.smart.ecommerce.report.generator.pdf.PdfInventoryReportGenerator;
 import com.smart.ecommerce.report.util.*;
-import java.time.*;
-import java.time.Period;
+import java.time.LocalDate;
 import java.util.*;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.context.SecurityContextHolder;

@@ -1,7 +1,9 @@
 package com.smart.ecommerce.report.controller;
 import com.smart.ecommerce.dto.*;
 import com.smart.ecommerce.enums.InventoryMovementType;
-import com.smart.ecommerce.report.dto.InventoryFilters.*;
+import com.smart.ecommerce.report.dto.InventoryFilters.Current;
+import com.smart.ecommerce.report.dto.InventoryFilters.Movement;
+import com.smart.ecommerce.report.dto.InventoryFilters.Period;
 import com.smart.ecommerce.report.dto.InventoryReportDtos.*;
 import com.smart.ecommerce.report.service.InventoryReportService;
 import com.smart.ecommerce.report.util.*;
