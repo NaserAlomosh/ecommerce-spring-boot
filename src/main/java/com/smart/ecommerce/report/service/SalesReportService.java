@@ -178,7 +178,7 @@ public class SalesReportService {
   }
   public ProductSalesResponse product(Long id, ReportPeriod p, LocalDate f,
                                       LocalDate t, ReportGranularity g) {
-    if (!repo.productExists(id))
+    if (!repo.existsById(id))
       throw new IllegalArgumentException("report.error.product_not_found");
     var r = ranges.resolve(p, f, t);
     validateGranularity(r, g);
