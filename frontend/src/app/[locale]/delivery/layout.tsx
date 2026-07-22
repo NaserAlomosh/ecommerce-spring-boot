@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { RoleGate } from '@/components/auth/role-gate';
 import { Sidebar } from '@/components/layout/sidebar';
 import { asLocale } from '@/lib/i18n/routing';
 
@@ -8,11 +9,15 @@ type LayoutProps = {
 };
 
 export default async function DeliveryLayout({ children, params }: LayoutProps) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
+
   return (
-    <div className="shell">
-      <Sidebar locale={asLocale(locale)} mode="delivery" />
-      <main className="main">{children}</main>
-    </div>
+    <RoleGate locale={locale} allow={['DELIVERY']}>
+      <div className="shell">
+        <Sidebar locale={locale} mode="delivery" />
+        <main className="main">{children}</main>
+      </div>
+    </RoleGate>
   );
 }
