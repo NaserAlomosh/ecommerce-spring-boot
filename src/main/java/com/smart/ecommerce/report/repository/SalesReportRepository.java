@@ -1,22 +1,463 @@
 package com.smart.ecommerce.report.repository;
-import com.smart.ecommerce.entity.Order;import java.math.BigDecimal;import java.time.Instant;import java.util.*;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.*;import org.springframework.data.repository.query.Param;
-public interface SalesReportRepository extends JpaRepository<Order,Long>{
- @Query("""select coalesce(sum(o.totalAmount),0) totalRevenue,count(o) completedOrders,coalesce(sum(o.totalItems),0) totalItemsSold,count(distinct o.customer.id) uniqueCustomers,coalesce(max(o.totalAmount),0) highestOrderValue,coalesce(min(o.totalAmount),0) lowestOrderValue from Order o where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to and (:currency is null or o.currency=:currency)""") SummaryProjection summary(Instant from,Instant to,String currency);
- @Query("""select count(distinct o.customer.id) from Order o where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to and not exists(select 1 from Order p where p.customer.id=o.customer.id and p.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(p.completedAt,p.createdAt)<:from)""") long newCustomers(Instant from,Instant to);
- @Query("""select o.status as status,count(o) as total from Order o where o.createdAt>=:from and o.createdAt<:to group by o.status""") List<StatusProjection> statusSummary(Instant from,Instant to);
- @Query("""select o.id orderId,o.orderNumber orderNumber,c.id customerId,concat(c.firstName,' ',c.lastName) customerName,o.totalAmount totalAmount,o.currency currency,count(oi.id) itemsCount,coalesce(sum(oi.quantity),0) totalQuantity,coalesce(o.completedAt,o.createdAt) completedAt,o.createdAt createdAt,d.id deliveryUserId,concat(d.firstName,' ',d.lastName) deliveryUserName from Order o join o.customer c left join o.assignedDeliveryUser d join o.items oi left join Product p on p.id=oi.productId where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to and (:orderNumber is null or lower(o.orderNumber) like lower(concat('%',:orderNumber,'%'))) and (:customerId is null or c.id=:customerId) and (:customerName is null or lower(concat(c.firstName,' ',c.lastName)) like lower(concat('%',:customerName,'%'))) and (:minAmount is null or o.totalAmount>=:minAmount) and (:maxAmount is null or o.totalAmount<=:maxAmount) and (:productId is null or oi.productId=:productId) and (:categoryId is null or p.category.id=:categoryId) and (:deliveryId is null or d.id=:deliveryId) and (:currency is null or o.currency=:currency) group by o.id,o.orderNumber,c.id,c.firstName,c.lastName,o.totalAmount,o.currency,o.completedAt,o.createdAt,d.id,d.firstName,d.lastName""") Page<OrderRowProjection> orderRows(Instant from,Instant to,String orderNumber,Long customerId,String customerName,BigDecimal minAmount,BigDecimal maxAmount,Long productId,Long categoryId,Long deliveryId,String currency,Pageable pageable);
- @Query("""select oi.productId productId,oi.productName productName,p.sku sku,p.category.id categoryId,coalesce(p.category.nameEn,'Historical/Deleted') categoryName,coalesce(sum(oi.quantity),0) quantitySold,count(distinct o.id) ordersCount,coalesce(sum(oi.lineTotal),0) revenue,coalesce(p.stockQuantity,0) currentStock,coalesce(p.averageRating,0) averageRating,coalesce(p.reviewsCount,0) reviewsCount from OrderItem oi join oi.order o left join Product p on p.id=oi.productId where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to group by oi.productId,oi.productName,p.sku,p.category.id,p.category.nameEn,p.stockQuantity,p.averageRating,p.reviewsCount""") List<TopProductProjection> topProducts(Instant from,Instant to,Pageable pageable);
- @Query("""select p.category.id categoryId,coalesce(p.category.nameEn,'Historical/Deleted') categoryName,count(distinct oi.productId) productsSold,coalesce(sum(oi.quantity),0) quantitySold,count(distinct o.id) completedOrders,coalesce(sum(oi.lineTotal),0) revenue,count(oi.id) itemRows from OrderItem oi join oi.order o left join Product p on p.id=oi.productId where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to group by p.category.id,p.category.nameEn""") Page<CategoryProjection> categories(Instant from,Instant to,Pageable pageable);
- @Query("""select c.id customerId,concat(c.firstName,' ',c.lastName) customerName,count(o) completedOrders,coalesce(sum(o.totalItems),0) itemsPurchased,coalesce(sum(o.totalAmount),0) totalSpent,min(coalesce(o.completedAt,o.createdAt)) firstCompletedOrderAt,max(coalesce(o.completedAt,o.createdAt)) lastCompletedOrderAt from Order o join o.customer c where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to and (:customerId is null or c.id=:customerId) and (:customerName is null or lower(concat(c.firstName,' ',c.lastName)) like lower(concat('%',:customerName,'%'))) group by c.id,c.firstName,c.lastName""") Page<CustomerProjection> customers(Instant from,Instant to,Long customerId,String customerName,Pageable pageable);
- @Query("""select count(p)>0 from Product p where p.id=:id""") boolean productExists(Long id);
- @Query("""select p.id productId,p.nameEn productName,p.sku sku,p.category.id categoryId,p.category.nameEn categoryName,p.stockQuantity currentStock,p.averageRating averageRating,p.reviewsCount reviewsCount from Product p where p.id=:id""") ProductInfoProjection productInfo(Long id);
- @Query("""select o.orderNumber orderNumber,concat(c.firstName,' ',c.lastName) customerName,coalesce(o.completedAt,o.createdAt) completedAt,oi.quantity quantity,oi.unitPrice unitPrice,oi.lineTotal lineTotal,oi.currency currency from OrderItem oi join oi.order o join o.customer c where o.status=com.smart.ecommerce.enums.OrderStatus.COMPLETED and oi.productId=:productId and coalesce(o.completedAt,o.createdAt)>=:from and coalesce(o.completedAt,o.createdAt)<:to order by coalesce(o.completedAt,o.createdAt) desc""") List<RecentItemProjection> recentItems(Long productId,Instant from,Instant to,Pageable pageable);
- interface SummaryProjection{BigDecimal getTotalRevenue();long getCompletedOrders();long getTotalItemsSold();long getUniqueCustomers();BigDecimal getHighestOrderValue();BigDecimal getLowestOrderValue();}
- interface StatusProjection{com.smart.ecommerce.enums.OrderStatus getStatus();long getTotal();}
- interface OrderRowProjection{Long getOrderId();String getOrderNumber();Long getCustomerId();String getCustomerName();BigDecimal getTotalAmount();String getCurrency();long getItemsCount();long getTotalQuantity();Instant getCompletedAt();Instant getCreatedAt();Long getDeliveryUserId();String getDeliveryUserName();}
- interface TopProductProjection{Long getProductId();String getProductName();String getSku();Long getCategoryId();String getCategoryName();long getQuantitySold();long getOrdersCount();BigDecimal getRevenue();int getCurrentStock();BigDecimal getAverageRating();long getReviewsCount();}
- interface CategoryProjection{Long getCategoryId();String getCategoryName();long getProductsSold();long getQuantitySold();long getCompletedOrders();BigDecimal getRevenue();long getItemRows();}
- interface CustomerProjection{Long getCustomerId();String getCustomerName();long getCompletedOrders();long getItemsPurchased();BigDecimal getTotalSpent();Instant getFirstCompletedOrderAt();Instant getLastCompletedOrderAt();}
- interface ProductInfoProjection{Long getProductId();String getProductName();String getSku();Long getCategoryId();String getCategoryName();int getCurrentStock();BigDecimal getAverageRating();long getReviewsCount();}
- interface RecentItemProjection{String getOrderNumber();String getCustomerName();Instant getCompletedAt();int getQuantity();BigDecimal getUnitPrice();BigDecimal getLineTotal();String getCurrency();}
+
+import com.smart.ecommerce.entity.Order;
+import com.smart.ecommerce.enums.OrderStatus;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface SalesReportRepository extends JpaRepository<Order, Long> {
+
+ @Query("""
+        SELECT
+            COALESCE(SUM(o.totalAmount), 0) AS totalRevenue,
+            COUNT(o.id) AS completedOrders,
+            COALESCE(SUM(o.totalItems), 0) AS totalItemsSold,
+            COUNT(DISTINCT o.customer.id) AS uniqueCustomers,
+            COALESCE(MAX(o.totalAmount), 0) AS highestOrderValue,
+            COALESCE(MIN(o.totalAmount), 0) AS lowestOrderValue
+        FROM Order o
+        WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+          AND COALESCE(o.completedAt, o.createdAt) >= :from
+          AND COALESCE(o.completedAt, o.createdAt) < :to
+          AND (:currency IS NULL OR o.currency = :currency)
+        """)
+ SummaryProjection summary(
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         @Param("currency") String currency
+ );
+
+ @Query("""
+        SELECT COUNT(DISTINCT o.customer.id)
+        FROM Order o
+        WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+          AND COALESCE(o.completedAt, o.createdAt) >= :from
+          AND COALESCE(o.completedAt, o.createdAt) < :to
+          AND NOT EXISTS (
+              SELECT p.id
+              FROM Order p
+              WHERE p.customer.id = o.customer.id
+                AND p.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+                AND COALESCE(p.completedAt, p.createdAt) < :from
+          )
+        """)
+ long newCustomers(
+         @Param("from") Instant from,
+         @Param("to") Instant to
+ );
+
+ @Query("""
+        SELECT
+            o.status AS status,
+            COUNT(o.id) AS total
+        FROM Order o
+        WHERE o.createdAt >= :from
+          AND o.createdAt < :to
+        GROUP BY o.status
+        """)
+ List<StatusProjection> statusSummary(
+         @Param("from") Instant from,
+         @Param("to") Instant to
+ );
+
+ @Query(
+         value = """
+            SELECT
+                o.id AS orderId,
+                o.orderNumber AS orderNumber,
+                c.id AS customerId,
+                CONCAT(c.firstName, ' ', c.lastName) AS customerName,
+                o.totalAmount AS totalAmount,
+                o.currency AS currency,
+                COUNT(oi.id) AS itemsCount,
+                COALESCE(SUM(oi.quantity), 0) AS totalQuantity,
+                COALESCE(o.completedAt, o.createdAt) AS completedAt,
+                o.createdAt AS createdAt,
+                d.id AS deliveryUserId,
+                CONCAT(d.firstName, ' ', d.lastName) AS deliveryUserName
+            FROM Order o
+            JOIN o.customer c
+            LEFT JOIN o.assignedDeliveryUser d
+            JOIN o.items oi
+            LEFT JOIN Product p ON p.id = oi.productId
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+              AND (
+                  :orderNumber IS NULL
+                  OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :orderNumber, '%'))
+              )
+              AND (:customerId IS NULL OR c.id = :customerId)
+              AND (
+                  :customerName IS NULL
+                  OR LOWER(CONCAT(c.firstName, ' ', c.lastName))
+                     LIKE LOWER(CONCAT('%', :customerName, '%'))
+              )
+              AND (:minAmount IS NULL OR o.totalAmount >= :minAmount)
+              AND (:maxAmount IS NULL OR o.totalAmount <= :maxAmount)
+              AND (:productId IS NULL OR oi.productId = :productId)
+              AND (:categoryId IS NULL OR p.category.id = :categoryId)
+              AND (:deliveryId IS NULL OR d.id = :deliveryId)
+              AND (:currency IS NULL OR o.currency = :currency)
+            GROUP BY
+                o.id,
+                o.orderNumber,
+                c.id,
+                c.firstName,
+                c.lastName,
+                o.totalAmount,
+                o.currency,
+                o.completedAt,
+                o.createdAt,
+                d.id,
+                d.firstName,
+                d.lastName
+            """,
+         countQuery = """
+            SELECT COUNT(DISTINCT o.id)
+            FROM Order o
+            JOIN o.customer c
+            LEFT JOIN o.assignedDeliveryUser d
+            JOIN o.items oi
+            LEFT JOIN Product p ON p.id = oi.productId
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+              AND (
+                  :orderNumber IS NULL
+                  OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :orderNumber, '%'))
+              )
+              AND (:customerId IS NULL OR c.id = :customerId)
+              AND (
+                  :customerName IS NULL
+                  OR LOWER(CONCAT(c.firstName, ' ', c.lastName))
+                     LIKE LOWER(CONCAT('%', :customerName, '%'))
+              )
+              AND (:minAmount IS NULL OR o.totalAmount >= :minAmount)
+              AND (:maxAmount IS NULL OR o.totalAmount <= :maxAmount)
+              AND (:productId IS NULL OR oi.productId = :productId)
+              AND (:categoryId IS NULL OR p.category.id = :categoryId)
+              AND (:deliveryId IS NULL OR d.id = :deliveryId)
+              AND (:currency IS NULL OR o.currency = :currency)
+            """
+ )
+ Page<OrderRowProjection> orderRows(
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         @Param("orderNumber") String orderNumber,
+         @Param("customerId") Long customerId,
+         @Param("customerName") String customerName,
+         @Param("minAmount") BigDecimal minAmount,
+         @Param("maxAmount") BigDecimal maxAmount,
+         @Param("productId") Long productId,
+         @Param("categoryId") Long categoryId,
+         @Param("deliveryId") Long deliveryId,
+         @Param("currency") String currency,
+         Pageable pageable
+ );
+
+ @Query("""
+        SELECT
+            oi.productId AS productId,
+            oi.productName AS productName,
+            p.sku AS sku,
+            p.category.id AS categoryId,
+            COALESCE(p.category.nameEn, 'Historical/Deleted') AS categoryName,
+            COALESCE(SUM(oi.quantity), 0) AS quantitySold,
+            COUNT(DISTINCT o.id) AS ordersCount,
+            COALESCE(SUM(oi.lineTotal), 0) AS revenue,
+            COALESCE(p.stockQuantity, 0) AS currentStock,
+            COALESCE(p.averageRating, 0) AS averageRating,
+            COALESCE(p.reviewsCount, 0) AS reviewsCount
+        FROM OrderItem oi
+        JOIN oi.order o
+        LEFT JOIN Product p ON p.id = oi.productId
+        WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+          AND COALESCE(o.completedAt, o.createdAt) >= :from
+          AND COALESCE(o.completedAt, o.createdAt) < :to
+        GROUP BY
+            oi.productId,
+            oi.productName,
+            p.sku,
+            p.category.id,
+            p.category.nameEn,
+            p.stockQuantity,
+            p.averageRating,
+            p.reviewsCount
+        ORDER BY SUM(oi.lineTotal) DESC
+        """)
+ List<TopProductProjection> topProducts(
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         Pageable pageable
+ );
+
+ @Query(
+         value = """
+            SELECT
+                p.category.id AS categoryId,
+                COALESCE(p.category.nameEn, 'Historical/Deleted') AS categoryName,
+                COUNT(DISTINCT oi.productId) AS productsSold,
+                COALESCE(SUM(oi.quantity), 0) AS quantitySold,
+                COUNT(DISTINCT o.id) AS completedOrders,
+                COALESCE(SUM(oi.lineTotal), 0) AS revenue,
+                COUNT(oi.id) AS itemRows
+            FROM OrderItem oi
+            JOIN oi.order o
+            LEFT JOIN Product p ON p.id = oi.productId
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+            GROUP BY
+                p.category.id,
+                p.category.nameEn
+            """,
+         countQuery = """
+            SELECT COUNT(DISTINCT p.category.id)
+            FROM OrderItem oi
+            JOIN oi.order o
+            LEFT JOIN Product p ON p.id = oi.productId
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+            """
+ )
+ Page<CategoryProjection> categories(
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         Pageable pageable
+ );
+
+ @Query(
+         value = """
+            SELECT
+                c.id AS customerId,
+                CONCAT(c.firstName, ' ', c.lastName) AS customerName,
+                COUNT(o.id) AS completedOrders,
+                COALESCE(SUM(o.totalItems), 0) AS itemsPurchased,
+                COALESCE(SUM(o.totalAmount), 0) AS totalSpent,
+                MIN(COALESCE(o.completedAt, o.createdAt)) AS firstCompletedOrderAt,
+                MAX(COALESCE(o.completedAt, o.createdAt)) AS lastCompletedOrderAt
+            FROM Order o
+            JOIN o.customer c
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+              AND (:customerId IS NULL OR c.id = :customerId)
+              AND (
+                  :customerName IS NULL
+                  OR LOWER(CONCAT(c.firstName, ' ', c.lastName))
+                     LIKE LOWER(CONCAT('%', :customerName, '%'))
+              )
+            GROUP BY
+                c.id,
+                c.firstName,
+                c.lastName
+            """,
+         countQuery = """
+            SELECT COUNT(DISTINCT c.id)
+            FROM Order o
+            JOIN o.customer c
+            WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+              AND COALESCE(o.completedAt, o.createdAt) >= :from
+              AND COALESCE(o.completedAt, o.createdAt) < :to
+              AND (:customerId IS NULL OR c.id = :customerId)
+              AND (
+                  :customerName IS NULL
+                  OR LOWER(CONCAT(c.firstName, ' ', c.lastName))
+                     LIKE LOWER(CONCAT('%', :customerName, '%'))
+              )
+            """
+ )
+ Page<CustomerProjection> customers(
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         @Param("customerId") Long customerId,
+         @Param("customerName") String customerName,
+         Pageable pageable
+ );
+
+ boolean existsById(Long id);
+
+ @Query("""
+        SELECT
+            p.id AS productId,
+            p.nameEn AS productName,
+            p.sku AS sku,
+            p.category.id AS categoryId,
+            p.category.nameEn AS categoryName,
+            p.stockQuantity AS currentStock,
+            p.averageRating AS averageRating,
+            p.reviewsCount AS reviewsCount
+        FROM Product p
+        WHERE p.id = :id
+        """)
+ ProductInfoProjection productInfo(@Param("id") Long id);
+
+ @Query("""
+        SELECT
+            o.orderNumber AS orderNumber,
+            CONCAT(c.firstName, ' ', c.lastName) AS customerName,
+            COALESCE(o.completedAt, o.createdAt) AS completedAt,
+            oi.quantity AS quantity,
+            oi.unitPrice AS unitPrice,
+            oi.lineTotal AS lineTotal,
+            oi.currency AS currency
+        FROM OrderItem oi
+        JOIN oi.order o
+        JOIN o.customer c
+        WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
+          AND oi.productId = :productId
+          AND COALESCE(o.completedAt, o.createdAt) >= :from
+          AND COALESCE(o.completedAt, o.createdAt) < :to
+        ORDER BY COALESCE(o.completedAt, o.createdAt) DESC
+        """)
+ List<RecentItemProjection> recentItems(
+         @Param("productId") Long productId,
+         @Param("from") Instant from,
+         @Param("to") Instant to,
+         Pageable pageable
+ );
+
+ interface SummaryProjection {
+  BigDecimal getTotalRevenue();
+
+  Long getCompletedOrders();
+
+  Long getTotalItemsSold();
+
+  Long getUniqueCustomers();
+
+  BigDecimal getHighestOrderValue();
+
+  BigDecimal getLowestOrderValue();
+ }
+
+ interface StatusProjection {
+  OrderStatus getStatus();
+
+  Long getTotal();
+ }
+
+ interface OrderRowProjection {
+  Long getOrderId();
+
+  String getOrderNumber();
+
+  Long getCustomerId();
+
+  String getCustomerName();
+
+  BigDecimal getTotalAmount();
+
+  String getCurrency();
+
+  Long getItemsCount();
+
+  Long getTotalQuantity();
+
+  Instant getCompletedAt();
+
+  Instant getCreatedAt();
+
+  Long getDeliveryUserId();
+
+  String getDeliveryUserName();
+ }
+
+ interface TopProductProjection {
+  Long getProductId();
+
+  String getProductName();
+
+  String getSku();
+
+  Long getCategoryId();
+
+  String getCategoryName();
+
+  Long getQuantitySold();
+
+  Long getOrdersCount();
+
+  BigDecimal getRevenue();
+
+  Integer getCurrentStock();
+
+  BigDecimal getAverageRating();
+
+  Long getReviewsCount();
+ }
+
+ interface CategoryProjection {
+  Long getCategoryId();
+
+  String getCategoryName();
+
+  Long getProductsSold();
+
+  Long getQuantitySold();
+
+  Long getCompletedOrders();
+
+  BigDecimal getRevenue();
+
+  Long getItemRows();
+ }
+
+ interface CustomerProjection {
+  Long getCustomerId();
+
+  String getCustomerName();
+
+  Long getCompletedOrders();
+
+  Long getItemsPurchased();
+
+  BigDecimal getTotalSpent();
+
+  Instant getFirstCompletedOrderAt();
+
+  Instant getLastCompletedOrderAt();
+ }
+
+ interface ProductInfoProjection {
+  Long getProductId();
+
+  String getProductName();
+
+  String getSku();
+
+  Long getCategoryId();
+
+  String getCategoryName();
+
+  Integer getCurrentStock();
+
+  BigDecimal getAverageRating();
+
+  Long getReviewsCount();
+ }
+
+ interface RecentItemProjection {
+  String getOrderNumber();
+
+  String getCustomerName();
+
+  Instant getCompletedAt();
+
+  Integer getQuantity();
+
+  BigDecimal getUnitPrice();
+
+  BigDecimal getLineTotal();
+
+  String getCurrency();
+ }
 }
