@@ -1,1 +1,6 @@
-export { default } from '../account/orders/page';
+import { ResourcePage } from '@/features/admin/resource-page';
+import { endpoints } from '@/lib/api/endpoints';
+
+export default function OrdersPage() {
+  return <ResourcePage title="Customer Orders" url={endpoints.orders} actions />;
+}

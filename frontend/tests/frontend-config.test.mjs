@@ -24,3 +24,11 @@ test('API registry documents broad backend coverage', () => {
     assert.ok(registry.includes(token), `${token} missing`);
   }
 });
+
+
+test('package is named and pins Next to the build-tested major', () => {
+  const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.name, 'smart-commerce-frontend');
+  assert.equal(pkg.dependencies.next, '16.2.11');
+  assert.ok(pkg.devDependencies.typescript);
+});
