@@ -1,4 +1,25 @@
 package com.smart.ecommerce.entity;
-import com.smart.ecommerce.enums.SocialProvider;import jakarta.persistence.*;import java.time.Instant;import lombok.Getter;import lombok.Setter;
-@Getter @Setter @Entity @Table(name="social_accounts", uniqueConstraints=@UniqueConstraint(name="uk_social_provider_subject",columnNames={"provider","provider_user_id"}), indexes=@Index(name="idx_social_user",columnList="user_id"))
-public class SocialAccount extends BaseEntity{ @ManyToOne(optional=false,fetch=FetchType.LAZY) @JoinColumn(name="user_id",nullable=false) private User user; @Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private SocialProvider provider; @Column(nullable=false,length=255) private String providerUserId; @Column(nullable=false,length=190) private String providerEmail; private Instant lastLoginAt; }
+import com.smart.ecommerce.enums.SocialProvider;
+import jakarta.persistence.*;
+import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
+@Getter
+@Setter
+@Entity
+@Table(name = "social_accounts",
+       uniqueConstraints =
+           @UniqueConstraint(name = "uk_social_provider_subject",
+                             columnNames = {"provider", "provider_user_id"}),
+       indexes = @Index(name = "idx_social_user", columnList = "user_id"))
+public class SocialAccount extends BaseEntity {
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 30)
+  private SocialProvider provider;
+  @Column(nullable = false, length = 255) private String providerUserId;
+  @Column(nullable = false, length = 190) private String providerEmail;
+  private Instant lastLoginAt;
+}

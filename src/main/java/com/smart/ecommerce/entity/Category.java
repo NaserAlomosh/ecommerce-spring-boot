@@ -11,10 +11,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "categories")
 public class Category extends BaseEntity {
-    @Column(nullable = false)
-    private String nameEn;
-    @Column(nullable = false)
-    private String nameAr;
-    @Column(nullable = false)
-    private boolean active = true;
+  @Column(nullable = false) private String nameEn;
+  @Column(nullable = false) private String nameAr;
+  @Column(nullable = false) private boolean active = true;
 }

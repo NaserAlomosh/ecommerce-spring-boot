@@ -8,8 +8,8 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -20,67 +20,87 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
-    private final MessageUtil messageUtil;
+  private final MessageUtil messageUtil;
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
-        }
-        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, null, errors);
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleValidation(MethodArgumentNotValidException ex) {
+    Map<String, String> errors = new LinkedHashMap<>();
+    for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+      errors.put(fieldError.getField(), fieldError.getDefaultMessage());
     }
+    return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, null,
+                 errors);
+  }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleConstraintViolation(ConstraintViolationException ex) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        ex.getConstraintViolations().forEach(violation ->
-                errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
-        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, null, errors);
-    }
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleConstraintViolation(ConstraintViolationException ex) {
+    Map<String, String> errors = new LinkedHashMap<>();
+    ex.getConstraintViolations().forEach(
+        violation
+        -> errors.put(violation.getPropertyPath().toString(),
+                      violation.getMessage()));
+    return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, null,
+                 errors);
+  }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleNotFound(ResourceNotFoundException ex) {
-        return build(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(), null);
-    }
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleNotFound(ResourceNotFoundException ex) {
+    return build(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, ex.getMessage(),
+                 null);
+  }
 
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
-        return build(HttpStatus.METHOD_NOT_ALLOWED, ErrorCode.BAD_REQUEST, ex.getMessage(), null);
-    }
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+    return build(HttpStatus.METHOD_NOT_ALLOWED, ErrorCode.BAD_REQUEST,
+                 ex.getMessage(), null);
+  }
 
-    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
-        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.BAD_REQUEST, ex.getMessage(), null);
-    }
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+    return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.BAD_REQUEST,
+                 ex.getMessage(), null);
+  }
 
-    @ExceptionHandler({IllegalArgumentException.class, BadCredentialsException.class})
-    public ResponseEntity<ApiResponse<ApiError>> handleBadRequest(Exception ex) {
-        return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR, ex.getMessage(), null);
-    }
+  @ExceptionHandler({IllegalArgumentException.class,
+                     BadCredentialsException.class})
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleBadRequest(Exception ex) {
+    return build(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION_ERROR,
+                 ex.getMessage(), null);
+  }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleDenied(AccessDeniedException ex) {
-        return build(HttpStatus.FORBIDDEN, ErrorCode.VALIDATION_ERROR, ex.getMessage(), null);
-    }
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ApiResponse<ApiError>>
+  handleDenied(AccessDeniedException ex) {
+    return build(HttpStatus.FORBIDDEN, ErrorCode.VALIDATION_ERROR,
+                 ex.getMessage(), null);
+  }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<ApiError>> handleUnexpected(Exception ex) {
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, null, null);
-    }
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ApiResponse<ApiError>> handleUnexpected(Exception ex) {
+    return build(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR,
+                 null, null);
+  }
 
-    private ResponseEntity<ApiResponse<ApiError>> build(
-            HttpStatus status,
-            ErrorCode code,
-            String fallbackMessage,
-            Map<String, String> errors
-    ) {
-        String message = fallbackMessage == null ? messageUtil.getMessage(code.messageKey()) : resolveMessage(fallbackMessage);
-        ApiError error = ApiError.of(code, message, errors);
-        return ResponseEntity.status(status).body(ApiResponse.failure(message, error));
-    }
+  private ResponseEntity<ApiResponse<ApiError>>
+  build(HttpStatus status, ErrorCode code, String fallbackMessage,
+        Map<String, String> errors) {
+    String message = fallbackMessage == null
+                         ? messageUtil.getMessage(code.messageKey())
+                         : resolveMessage(fallbackMessage);
+    ApiError error = ApiError.of(code, message, errors);
+    return ResponseEntity.status(status).body(
+        ApiResponse.failure(message, error));
+  }
 
-    private String resolveMessage(String message) {
-        return message != null && message.contains(".") ? messageUtil.getMessage(message) : message;
-    }
+  private String resolveMessage(String message) {
+    return message != null && message.contains(".")
+        ? messageUtil.getMessage(message)
+        : message;
+  }
 }

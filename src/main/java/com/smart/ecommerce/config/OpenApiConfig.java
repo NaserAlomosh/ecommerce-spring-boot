@@ -8,12 +8,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    @Bean
-    public OpenAPI ecommerceOpenApi() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("E-commerce API")
-                        .version("v1")
-                        .description("Production-ready e-commerce backend foundation"));
-    }
+  @Bean
+  public OpenAPI ecommerceOpenApi() {
+    return new OpenAPI().info(
+        new Info()
+            .title("E-commerce API")
+            .version("v1")
+            .description("Production-ready e-commerce backend foundation"));
+  }
 }

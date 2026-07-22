@@ -13,21 +13,25 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/categories")
 public class CategoryController {
-    private final CategoryService categoryService;
-    private final MessageUtil messages;
+  private final CategoryService categoryService;
+  private final MessageUtil messages;
 
-    @PostMapping
-    public ApiResponse<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
-        return ApiResponse.success(messages.getMessage("category_created"), categoryService.create(request));
-    }
+  @PostMapping
+  public ApiResponse<CategoryResponse>
+  create(@Valid @RequestBody CategoryRequest request) {
+    return ApiResponse.success(messages.getMessage("category_created"),
+                               categoryService.create(request));
+  }
 
-    @GetMapping
-    public ApiResponse<List<CategoryResponse>> list() {
-        return ApiResponse.success(messages.getMessage("categories"), categoryService.list(true));
-    }
+  @GetMapping
+  public ApiResponse<List<CategoryResponse>> list() {
+    return ApiResponse.success(messages.getMessage("categories"),
+                               categoryService.list(true));
+  }
 
-    @GetMapping("/{categoryId}")
-    public ApiResponse<CategoryResponse> get(@PathVariable Long categoryId) {
-        return ApiResponse.success(messages.getMessage("category"), categoryService.get(categoryId, true));
-    }
+  @GetMapping("/{categoryId}")
+  public ApiResponse<CategoryResponse> get(@PathVariable Long categoryId) {
+    return ApiResponse.success(messages.getMessage("category"),
+                               categoryService.get(categoryId, true));
+  }
 }

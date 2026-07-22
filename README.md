@@ -47,7 +47,6 @@ Swagger UI:
 http://localhost:8080/swagger-ui.html
 ```
 
-
 ### Gmail SMTP setup
 
 To send the verification OTP from Gmail after registration, configure SMTP with a Gmail App Password. Do **not** commit the real App Password to git; keep it in your local `.env` or deployment secrets. The application imports an optional `.env` file from the working directory, so IntelliJ run configurations should use the project root as the working directory or define these variables directly in the run configuration.
@@ -88,30 +87,35 @@ curl -H "Accept-Language: en" http://localhost:8080/api/v1/health
 
 For compatibility with clients that send the custom `accept/language` header, the backend also checks that header when `Accept-Language` is missing. Unsupported or invalid locales fall back to English.
 
-
 ## Authentication & User Management
 
 This module provides the e-commerce identity foundation for four roles: `ADMIN`, `SUB_ADMIN`, `CUSTOMER`, and `DELIVERY`. Public registration is restricted to `CUSTOMER`; administrators create `ADMIN`, `SUB_ADMIN`, `DELIVERY`, or additional `CUSTOMER` accounts. `ADMIN` users can create other admins and sub-admins, reset passwords for sub-admins and drivers, and delete sub-admin, driver, and customer accounts. `SUB_ADMIN` users can create, block, and delete driver and customer accounts only.
 
 ### Registration and email verification flow
+
 1. `POST /api/v1/auth/register` creates a `CUSTOMER` with `PENDING` status, `emailVerified=false`, and `phoneVerified=false`. The request never accepts a role.
 2. The backend generates a cryptographically secure six-digit OTP, stores only its BCrypt hash in `email_otps`, and sends it through the configured email service.
 3. `POST /api/v1/auth/verify-email` consumes the OTP, marks the user `ACTIVE`, and sets `emailVerified=true`. Expired, consumed, or over-attempt OTPs are rejected.
 4. `POST /api/v1/auth/resend-email-otp` invalidates prior email-verification OTPs before sending a replacement.
 
 ### Forgot password flow
+
 `POST /api/v1/auth/forgot-password` never reveals whether an email exists. For existing users it sends a `PASSWORD_RESET` OTP. `POST /api/v1/auth/verify-password-reset-otp` consumes the OTP and returns a temporary reset token whose hash is stored in `password_reset_tokens`. `POST /api/v1/auth/reset-password` validates that token, changes the BCrypt password hash, consumes the token, and revokes all refresh tokens.
 
 ### JWT and refresh-token rotation
+
 `POST /api/v1/auth/login` returns a JWT access token and a refresh token. Refresh tokens are stored only as SHA-256 hashes in `refresh_tokens`. `POST /api/v1/auth/refresh` revokes the presented active token and creates a replacement; expired, revoked, or reused refresh tokens are rejected and reuse revokes the user's outstanding refresh tokens. Logout revokes the supplied refresh token. Changing a password or blocking a user revokes all refresh tokens.
 
 ### Social login
+
 `POST /api/v1/auth/social-login` supports `GOOGLE` and `APPLE` for customers only. Provider information is stored in `social_accounts`; `googleId` and `appleId` are intentionally not stored on `users`. Verified provider emails can create or link a `CUSTOMER`; unverified provider emails, existing non-customer accounts, and inactive accounts are rejected. Production deployments must verify issuer, audience, signature, expiration, and nonce server-side for the supplied identity token.
 
 #### External authentication verification
+
 Google and Apple social-login checks depend on external OAuth credentials, valid provider tokens, configured audiences, callback URLs, and provider availability. During local or CI verification, run these checks only when the required `GOOGLE_AUDIENCE`, `APPLE_AUDIENCE`, and provider-issued test tokens are available. If those dependencies are not available, record each affected provider as `Skipped (External Dependency)` with the missing configuration or service as the reason, and continue verifying the rest of the system. Do not remove or weaken either provider implementation solely because the external dependency cannot be reached in the current environment.
 
 ### Creating the first admin account
+
 Set the bootstrap variables before the first startup. If `BOOTSTRAP_ADMIN_ENABLED=true` and there is no active admin, the application creates one active, email-verified `ADMIN` account automatically. Disable the flag after the first successful startup.
 
 ```bash
@@ -126,6 +130,7 @@ BOOTSTRAP_ADMIN_PHONE=+962790000000
 Then log in through `POST /api/v1/auth/login` and use the returned access token with `/api/v1/admin/users`.
 
 ### Required environment variables
+
 - `JWT_SECRET` - HMAC signing secret for access tokens.
 - `JWT_EXPIRATION_MILLIS` - access-token lifetime, default `900000`.
 - `REFRESH_TOKEN_EXPIRATION` - refresh-token lifetime, default `30d`.
@@ -138,6 +143,7 @@ Then log in through `POST /api/v1/auth/login` and use the returned access token 
 - `APPLE_AUDIENCE` - accepted Apple Services ID/bundle audience.
 
 ### Implemented endpoints
+
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
@@ -159,9 +165,11 @@ Then log in through `POST /api/v1/auth/login` and use the returned access token 
 - `DELETE /api/v1/admin/users/{id}`
 
 ### MySQL/Flyway
+
 Migration `V2__auth_user_management.sql` creates `users`, `refresh_tokens`, `email_otps`, `password_reset_tokens`, and `social_accounts` using snake_case names, unique constraints, indexes, and foreign keys.
 
 ### API localization headers
+
 All API responses can be returned in English or Arabic by sending `Accept-Language`. Use `en` for English or `ar` for Arabic. Authenticated endpoints also require an `Authorization: Bearer <accessToken>` header.
 
 Common headers:
@@ -465,13 +473,13 @@ All customer cart and wishlist endpoints require an authenticated JWT with role 
 
 ### Cart endpoints
 
-| Method | Endpoint | Role | Description |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/customer/cart` | `CUSTOMER` | Return the active cart, recalculating prices and availability. |
-| `POST` | `/api/v1/customer/cart/items` | `CUSTOMER` | Add a product or increase its quantity. |
-| `PATCH` | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Replace a cart item quantity. |
-| `DELETE` | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Remove one item from the current customer's cart. |
-| `DELETE` | `/api/v1/customer/cart/items` | `CUSTOMER` | Clear all active cart items. |
+| Method   | Endpoint                                   | Role       | Description                                                    |
+| -------- | ------------------------------------------ | ---------- | -------------------------------------------------------------- |
+| `GET`    | `/api/v1/customer/cart`                    | `CUSTOMER` | Return the active cart, recalculating prices and availability. |
+| `POST`   | `/api/v1/customer/cart/items`              | `CUSTOMER` | Add a product or increase its quantity.                        |
+| `PATCH`  | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Replace a cart item quantity.                                  |
+| `DELETE` | `/api/v1/customer/cart/items/{cartItemId}` | `CUSTOMER` | Remove one item from the current customer's cart.              |
+| `DELETE` | `/api/v1/customer/cart/items`              | `CUSTOMER` | Clear all active cart items.                                   |
 
 Add item request:
 
@@ -508,18 +516,18 @@ Cart response example:
           "availableStock": 8
         },
         "quantity": 2,
-        "unitPrice": 10.00,
+        "unitPrice": 10.0,
         "currency": "JOD",
-        "discountPrice": 8.00,
-        "effectivePrice": 8.00,
-        "lineTotal": 16.00,
+        "discountPrice": 8.0,
+        "effectivePrice": 8.0,
+        "lineTotal": 16.0,
         "available": true,
         "quantityExceedsStock": false
       }
     ],
     "totalItems": 2,
     "distinctItems": 1,
-    "subtotal": 16.00,
+    "subtotal": 16.0,
     "currency": "JOD"
   }
 }
@@ -529,12 +537,12 @@ Validation and business rules: `productId` is required, `quantity` is required a
 
 ### Wishlist endpoints
 
-| Method | Endpoint | Role | Description |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/customer/wishlist` | `CUSTOMER` | List wishlist items with current product availability. |
-| `POST` | `/api/v1/customer/wishlist` | `CUSTOMER` | Add a product idempotently. |
-| `DELETE` | `/api/v1/customer/wishlist/{productId}` | `CUSTOMER` | Remove a product from the wishlist. |
-| `GET` | `/api/v1/customer/wishlist/check/{productId}` | `CUSTOMER` | Return whether the product is wishlisted. |
+| Method   | Endpoint                                      | Role       | Description                                            |
+| -------- | --------------------------------------------- | ---------- | ------------------------------------------------------ |
+| `GET`    | `/api/v1/customer/wishlist`                   | `CUSTOMER` | List wishlist items with current product availability. |
+| `POST`   | `/api/v1/customer/wishlist`                   | `CUSTOMER` | Add a product idempotently.                            |
+| `DELETE` | `/api/v1/customer/wishlist/{productId}`       | `CUSTOMER` | Remove a product from the wishlist.                    |
+| `GET`    | `/api/v1/customer/wishlist/check/{productId}` | `CUSTOMER` | Return whether the product is wishlisted.              |
 
 Add wishlist item request:
 
@@ -558,11 +566,11 @@ Wishlist response example:
           "nameEn": "Coffee",
           "nameAr": "قهوة",
           "sku": "COF-1",
-          "price": 10.00,
+          "price": 10.0,
           "currency": "JOD",
-          "discountPrice": 8.00,
-          "effectivePrice": 8.00,
-          "discountPercentage": 20.00,
+          "discountPrice": 8.0,
+          "effectivePrice": 8.0,
+          "discountPercentage": 20.0,
           "primaryImageUrl": "/uploads/products/coffee.png",
           "active": true,
           "inStock": true,
@@ -646,14 +654,14 @@ Orders are created from the authenticated customer's active cart and selected ac
 
 Cancellation rules:
 
-* `CUSTOMER` may cancel only `PENDING` orders.
-* `ADMIN` may cancel `PENDING`, `CONFIRMED`, or `PROCESSING` orders.
-* `READY_FOR_DELIVERY`, `COMPLETED`, and `CANCELLED` orders cannot be cancelled.
-* Cancellation restores product stock once and appends order status history.
+- `CUSTOMER` may cancel only `PENDING` orders.
+- `ADMIN` may cancel `PENDING`, `CONFIRMED`, or `PROCESSING` orders.
+- `READY_FOR_DELIVERY`, `COMPLETED`, and `CANCELLED` orders cannot be cancelled.
+- Cancellation restores product stock once and appends order status history.
 
 ### Customer endpoints (`ROLE_CUSTOMER`)
 
-* `POST /api/v1/customer/orders` creates an order from the active cart.
+- `POST /api/v1/customer/orders` creates an order from the active cart.
 
 ```json
 {
@@ -662,30 +670,30 @@ Cancellation rules:
 }
 ```
 
-* `GET /api/v1/customer/orders?status=PENDING&page=0&size=20` lists the customer's orders newest first.
-* `GET /api/v1/customer/orders/{orderId}` returns one owned order with items and address snapshot.
-* `GET /api/v1/customer/orders/number/{orderNumber}` returns one owned order by public order number.
-* `PATCH /api/v1/customer/orders/{orderId}/cancel` cancels a pending order.
+- `GET /api/v1/customer/orders?status=PENDING&page=0&size=20` lists the customer's orders newest first.
+- `GET /api/v1/customer/orders/{orderId}` returns one owned order with items and address snapshot.
+- `GET /api/v1/customer/orders/number/{orderNumber}` returns one owned order by public order number.
+- `PATCH /api/v1/customer/orders/{orderId}/cancel` cancels a pending order.
 
 ```json
 { "reason": "Ordered by mistake" }
 ```
 
-* `GET /api/v1/customer/orders/{orderId}/history` returns status history oldest first.
+- `GET /api/v1/customer/orders/{orderId}/history` returns status history oldest first.
 
 ### Admin endpoints (`ROLE_ADMIN`)
 
-* `GET /api/v1/admin/orders?status=PENDING&orderNumber=ORD&customer=naser&fromDate=2026-07-01T00:00:00Z&toDate=2026-07-31T23:59:59Z&page=0&size=20` lists and filters all orders newest first.
-* `GET /api/v1/admin/orders/{orderId}` returns complete details.
-* `GET /api/v1/admin/orders/number/{orderNumber}` returns complete details by order number.
-* `PATCH /api/v1/admin/orders/{orderId}/status` advances an order through the allowed lifecycle.
+- `GET /api/v1/admin/orders?status=PENDING&orderNumber=ORD&customer=naser&fromDate=2026-07-01T00:00:00Z&toDate=2026-07-31T23:59:59Z&page=0&size=20` lists and filters all orders newest first.
+- `GET /api/v1/admin/orders/{orderId}` returns complete details.
+- `GET /api/v1/admin/orders/number/{orderNumber}` returns complete details by order number.
+- `PATCH /api/v1/admin/orders/{orderId}/status` advances an order through the allowed lifecycle.
 
 ```json
 { "status": "CONFIRMED", "note": "Order reviewed and confirmed" }
 ```
 
-* `PATCH /api/v1/admin/orders/{orderId}/cancel` cancels an eligible order.
-* `GET /api/v1/admin/orders/{orderId}/history` returns full history.
+- `PATCH /api/v1/admin/orders/{orderId}/cancel` cancels an eligible order.
+- `GET /api/v1/admin/orders/{orderId}/history` returns full history.
 
 ### Example order response
 
@@ -695,18 +703,18 @@ Cancellation rules:
   "orderNumber": "ORD-20260721-A8F3K2",
   "status": "PENDING",
   "currency": "JOD",
-  "subtotal": 45.000,
-  "deliveryFee": 0.000,
-  "discountAmount": 0.000,
-  "totalAmount": 45.000,
+  "subtotal": 45.0,
+  "deliveryFee": 0.0,
+  "discountAmount": 0.0,
+  "totalAmount": 45.0,
   "totalItems": 3,
   "customerNotes": "Please call before delivery",
   "address": {
     "recipientName": "Naser Alomosh",
     "phoneNumber": "0791234567",
     "city": "Amman",
-    "latitude": 31.9975000,
-    "longitude": 35.8372000,
+    "latitude": 31.9975,
+    "longitude": 35.8372,
     "area": "Khalda",
     "street": "Wasfi Al Tal Street",
     "additionalDirections": "Near the pharmacy"
@@ -717,9 +725,9 @@ Cancellation rules:
       "productName": "Wireless Headphones",
       "productImageUrl": "https://example.com/image.jpg",
       "quantity": 2,
-      "unitPrice": 20.000,
+      "unitPrice": 20.0,
       "currency": "JOD",
-      "lineTotal": 40.000
+      "lineTotal": 40.0
     }
   ]
 }

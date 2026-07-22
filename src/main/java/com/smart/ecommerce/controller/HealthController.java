@@ -13,13 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/health")
 @RequiredArgsConstructor
 public class HealthController {
-    private final MessageUtil messageUtil;
+  private final MessageUtil messageUtil;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, String>>> health() {
-        return ResponseEntity.ok(ApiResponse.success(
-                messageUtil.getMessage("health.success"),
-                Map.of("status", messageUtil.getMessage("health.status"))
-        ));
-    }
+  @GetMapping
+  public ResponseEntity<ApiResponse<Map<String, String>>> health() {
+    return ResponseEntity.ok(ApiResponse.success(
+        messageUtil.getMessage("health.success"),
+        Map.of("status", messageUtil.getMessage("health.status"))));
+  }
 }

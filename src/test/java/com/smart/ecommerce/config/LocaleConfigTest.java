@@ -9,25 +9,26 @@ import org.springframework.web.servlet.LocaleResolver;
 
 class LocaleConfigTest {
 
-    private final LocaleResolver localeResolver = new LocaleConfig().localeResolver();
+  private final LocaleResolver localeResolver =
+      new LocaleConfig().localeResolver();
 
-    @Test
-    void resolvesArabicFromAcceptLanguageHeader() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Accept-Language", "ar");
+  @Test
+  void resolvesArabicFromAcceptLanguageHeader() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("Accept-Language", "ar");
 
-        Locale locale = localeResolver.resolveLocale(request);
+    Locale locale = localeResolver.resolveLocale(request);
 
-        assertThat(locale.getLanguage()).isEqualTo("ar");
-    }
+    assertThat(locale.getLanguage()).isEqualTo("ar");
+  }
 
-    @Test
-    void resolvesEnglishFromLegacyAcceptLanguageHeader() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("accept/language", "en");
+  @Test
+  void resolvesEnglishFromLegacyAcceptLanguageHeader() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("accept/language", "en");
 
-        Locale locale = localeResolver.resolveLocale(request);
+    Locale locale = localeResolver.resolveLocale(request);
 
-        assertThat(locale).isEqualTo(Locale.ENGLISH);
-    }
+    assertThat(locale).isEqualTo(Locale.ENGLISH);
+  }
 }

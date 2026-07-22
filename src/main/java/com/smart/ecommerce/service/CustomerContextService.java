@@ -7,11 +7,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class CustomerContextService {
- private final UserRepository userRepository;
- public User currentCustomer() {
-  String email = SecurityContextHolder.getContext().getAuthentication().getName();
-  return userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
- }
+  private final UserRepository userRepository;
+  public User currentCustomer() {
+    String email =
+        SecurityContextHolder.getContext().getAuthentication().getName();
+    return userRepository.findByEmail(email).orElseThrow(
+        () -> new ResourceNotFoundException("Customer not found"));
+  }
 }

@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface SalesReportRepository extends JpaRepository<Order, Long> {
 
- @Query("""
+  @Query("""
         SELECT
             COALESCE(SUM(o.totalAmount), 0) AS totalRevenue,
             COUNT(o.id) AS completedOrders,
@@ -27,13 +27,11 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
           AND COALESCE(o.completedAt, o.createdAt) < :to
           AND (:currency IS NULL OR o.currency = :currency)
         """)
- SummaryProjection summary(
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         @Param("currency") String currency
- );
+  SummaryProjection summary(@Param("from") Instant from,
+                            @Param("to") Instant to,
+                            @Param("currency") String currency);
 
- @Query("""
+  @Query("""
         SELECT COUNT(DISTINCT o.customer.id)
         FROM Order o
         WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
@@ -47,12 +45,9 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
                 AND COALESCE(p.completedAt, p.createdAt) < :from
           )
         """)
- long newCustomers(
-         @Param("from") Instant from,
-         @Param("to") Instant to
- );
+  long newCustomers(@Param("from") Instant from, @Param("to") Instant to);
 
- @Query("""
+  @Query("""
         SELECT
             o.status AS status,
             COUNT(o.id) AS total
@@ -61,13 +56,10 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
           AND o.createdAt < :to
         GROUP BY o.status
         """)
- List<StatusProjection> statusSummary(
-         @Param("from") Instant from,
-         @Param("to") Instant to
- );
+  List<StatusProjection> statusSummary(@Param("from") Instant from,
+                                       @Param("to") Instant to);
 
- @Query(
-         value = """
+  @Query(value = """
             SELECT
                 o.id AS orderId,
                 o.orderNumber AS orderNumber,
@@ -118,8 +110,7 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
                 d.id,
                 d.firstName,
                 d.lastName
-            """,
-         countQuery = """
+            """, countQuery = """
             SELECT COUNT(DISTINCT o.id)
             FROM Order o
             JOIN o.customer c
@@ -145,24 +136,20 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
               AND (:categoryId IS NULL OR p.category.id = :categoryId)
               AND (:deliveryId IS NULL OR d.id = :deliveryId)
               AND (:currency IS NULL OR o.currency = :currency)
-            """
- )
- Page<OrderRowProjection> orderRows(
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         @Param("orderNumber") String orderNumber,
-         @Param("customerId") Long customerId,
-         @Param("customerName") String customerName,
-         @Param("minAmount") BigDecimal minAmount,
-         @Param("maxAmount") BigDecimal maxAmount,
-         @Param("productId") Long productId,
-         @Param("categoryId") Long categoryId,
-         @Param("deliveryId") Long deliveryId,
-         @Param("currency") String currency,
-         Pageable pageable
- );
+            """)
+  Page<OrderRowProjection>
+  orderRows(@Param("from") Instant from, @Param("to") Instant to,
+            @Param("orderNumber") String orderNumber,
+            @Param("customerId") Long customerId,
+            @Param("customerName") String customerName,
+            @Param("minAmount") BigDecimal minAmount,
+            @Param("maxAmount") BigDecimal maxAmount,
+            @Param("productId") Long productId,
+            @Param("categoryId") Long categoryId,
+            @Param("deliveryId") Long deliveryId,
+            @Param("currency") String currency, Pageable pageable);
 
- @Query("""
+  @Query("""
         SELECT
             oi.productId AS productId,
             oi.productName AS productName,
@@ -192,14 +179,11 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
             p.reviewsCount
         ORDER BY SUM(oi.lineTotal) DESC
         """)
- List<TopProductProjection> topProducts(
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         Pageable pageable
- );
+  List<TopProductProjection> topProducts(@Param("from") Instant from,
+                                         @Param("to") Instant to,
+                                         Pageable pageable);
 
- @Query(
-         value = """
+  @Query(value = """
             SELECT
                 p.category.id AS categoryId,
                 COALESCE(p.category.nameEn, 'Historical/Deleted') AS categoryName,
@@ -217,8 +201,7 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
             GROUP BY
                 p.category.id,
                 p.category.nameEn
-            """,
-         countQuery = """
+            """, countQuery = """
             SELECT COUNT(DISTINCT p.category.id)
             FROM OrderItem oi
             JOIN oi.order o
@@ -226,16 +209,12 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
             WHERE o.status = com.smart.ecommerce.enums.OrderStatus.COMPLETED
               AND COALESCE(o.completedAt, o.createdAt) >= :from
               AND COALESCE(o.completedAt, o.createdAt) < :to
-            """
- )
- Page<CategoryProjection> categories(
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         Pageable pageable
- );
+            """)
+  Page<CategoryProjection> categories(@Param("from") Instant from,
+                                      @Param("to") Instant to,
+                                      Pageable pageable);
 
- @Query(
-         value = """
+  @Query(value = """
             SELECT
                 c.id AS customerId,
                 CONCAT(c.firstName, ' ', c.lastName) AS customerName,
@@ -259,8 +238,7 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
                 c.id,
                 c.firstName,
                 c.lastName
-            """,
-         countQuery = """
+            """, countQuery = """
             SELECT COUNT(DISTINCT c.id)
             FROM Order o
             JOIN o.customer c
@@ -273,19 +251,15 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
                   OR LOWER(CONCAT(c.firstName, ' ', c.lastName))
                      LIKE LOWER(CONCAT('%', :customerName, '%'))
               )
-            """
- )
- Page<CustomerProjection> customers(
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         @Param("customerId") Long customerId,
-         @Param("customerName") String customerName,
-         Pageable pageable
- );
+            """)
+  Page<CustomerProjection>
+  customers(@Param("from") Instant from, @Param("to") Instant to,
+            @Param("customerId") Long customerId,
+            @Param("customerName") String customerName, Pageable pageable);
 
- boolean existsById(Long id);
+  boolean existsById(Long id);
 
- @Query("""
+  @Query("""
         SELECT
             p.id AS productId,
             p.nameEn AS productName,
@@ -297,10 +271,9 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
             p.reviewsCount AS reviewsCount
         FROM Product p
         WHERE p.id = :id
-        """)
- ProductInfoProjection productInfo(@Param("id") Long id);
+        """) ProductInfoProjection productInfo(@Param("id") Long id);
 
- @Query("""
+  @Query("""
         SELECT
             o.orderNumber AS orderNumber,
             CONCAT(c.firstName, ' ', c.lastName) AS customerName,
@@ -318,146 +291,143 @@ public interface SalesReportRepository extends JpaRepository<Order, Long> {
           AND COALESCE(o.completedAt, o.createdAt) < :to
         ORDER BY COALESCE(o.completedAt, o.createdAt) DESC
         """)
- List<RecentItemProjection> recentItems(
-         @Param("productId") Long productId,
-         @Param("from") Instant from,
-         @Param("to") Instant to,
-         Pageable pageable
- );
+  List<RecentItemProjection>
+  recentItems(@Param("productId") Long productId, @Param("from") Instant from,
+              @Param("to") Instant to, Pageable pageable);
 
- interface SummaryProjection {
-  BigDecimal getTotalRevenue();
+  interface SummaryProjection {
+    BigDecimal getTotalRevenue();
 
-  Long getCompletedOrders();
+    Long getCompletedOrders();
 
-  Long getTotalItemsSold();
+    Long getTotalItemsSold();
 
-  Long getUniqueCustomers();
+    Long getUniqueCustomers();
 
-  BigDecimal getHighestOrderValue();
+    BigDecimal getHighestOrderValue();
 
-  BigDecimal getLowestOrderValue();
- }
+    BigDecimal getLowestOrderValue();
+  }
 
- interface StatusProjection {
-  OrderStatus getStatus();
+  interface StatusProjection {
+    OrderStatus getStatus();
 
-  Long getTotal();
- }
+    Long getTotal();
+  }
 
- interface OrderRowProjection {
-  Long getOrderId();
+  interface OrderRowProjection {
+    Long getOrderId();
 
-  String getOrderNumber();
+    String getOrderNumber();
 
-  Long getCustomerId();
+    Long getCustomerId();
 
-  String getCustomerName();
+    String getCustomerName();
 
-  BigDecimal getTotalAmount();
+    BigDecimal getTotalAmount();
 
-  String getCurrency();
+    String getCurrency();
 
-  Long getItemsCount();
+    Long getItemsCount();
 
-  Long getTotalQuantity();
+    Long getTotalQuantity();
 
-  Instant getCompletedAt();
+    Instant getCompletedAt();
 
-  Instant getCreatedAt();
+    Instant getCreatedAt();
 
-  Long getDeliveryUserId();
+    Long getDeliveryUserId();
 
-  String getDeliveryUserName();
- }
+    String getDeliveryUserName();
+  }
 
- interface TopProductProjection {
-  Long getProductId();
+  interface TopProductProjection {
+    Long getProductId();
 
-  String getProductName();
+    String getProductName();
 
-  String getSku();
+    String getSku();
 
-  Long getCategoryId();
+    Long getCategoryId();
 
-  String getCategoryName();
+    String getCategoryName();
 
-  Long getQuantitySold();
+    Long getQuantitySold();
 
-  Long getOrdersCount();
+    Long getOrdersCount();
 
-  BigDecimal getRevenue();
+    BigDecimal getRevenue();
 
-  Integer getCurrentStock();
+    Integer getCurrentStock();
 
-  BigDecimal getAverageRating();
+    BigDecimal getAverageRating();
 
-  Long getReviewsCount();
- }
+    Long getReviewsCount();
+  }
 
- interface CategoryProjection {
-  Long getCategoryId();
+  interface CategoryProjection {
+    Long getCategoryId();
 
-  String getCategoryName();
+    String getCategoryName();
 
-  Long getProductsSold();
+    Long getProductsSold();
 
-  Long getQuantitySold();
+    Long getQuantitySold();
 
-  Long getCompletedOrders();
+    Long getCompletedOrders();
 
-  BigDecimal getRevenue();
+    BigDecimal getRevenue();
 
-  Long getItemRows();
- }
+    Long getItemRows();
+  }
 
- interface CustomerProjection {
-  Long getCustomerId();
+  interface CustomerProjection {
+    Long getCustomerId();
 
-  String getCustomerName();
+    String getCustomerName();
 
-  Long getCompletedOrders();
+    Long getCompletedOrders();
 
-  Long getItemsPurchased();
+    Long getItemsPurchased();
 
-  BigDecimal getTotalSpent();
+    BigDecimal getTotalSpent();
 
-  Instant getFirstCompletedOrderAt();
+    Instant getFirstCompletedOrderAt();
 
-  Instant getLastCompletedOrderAt();
- }
+    Instant getLastCompletedOrderAt();
+  }
 
- interface ProductInfoProjection {
-  Long getProductId();
+  interface ProductInfoProjection {
+    Long getProductId();
 
-  String getProductName();
+    String getProductName();
 
-  String getSku();
+    String getSku();
 
-  Long getCategoryId();
+    Long getCategoryId();
 
-  String getCategoryName();
+    String getCategoryName();
 
-  Integer getCurrentStock();
+    Integer getCurrentStock();
 
-  BigDecimal getAverageRating();
+    BigDecimal getAverageRating();
 
-  Long getReviewsCount();
- }
+    Long getReviewsCount();
+  }
 
- interface RecentItemProjection {
-  String getOrderNumber();
+  interface RecentItemProjection {
+    String getOrderNumber();
 
-  String getCustomerName();
+    String getCustomerName();
 
-  Instant getCompletedAt();
+    Instant getCompletedAt();
 
-  Integer getQuantity();
+    Integer getQuantity();
 
-  BigDecimal getUnitPrice();
+    BigDecimal getUnitPrice();
 
-  BigDecimal getLineTotal();
+    BigDecimal getLineTotal();
 
-  String getCurrency();
- }
+    String getCurrency();
+  }
 }
