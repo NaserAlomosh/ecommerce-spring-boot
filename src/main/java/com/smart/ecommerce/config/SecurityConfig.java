@@ -53,9 +53,9 @@ public class SecurityConfig {
             a
             -> a.requestMatchers(HttpMethod.OPTIONS, "/**")
                    .permitAll()
-                   .requestMatchers("/api/v1/auth/**", "/api/v1/health",
-                                 "/v3/api-docs/**", "/swagger-ui/**",
-                                 "/swagger-ui.html", "/uploads/**")
+                   .requestMatchers("/api/v1/auth/**", "/api/v1/login",
+                                    "/api/v1/health", "/v3/api-docs/**",
+                                    "/swagger-ui/**", "/swagger-ui.html", "/uploads/**")
                    .permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/v1/categories/**",
                                     "/api/v1/products", "/api/v1/products/*",
