@@ -26,7 +26,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     "/api/v1/products",
     "/api/v1/products/*",
     "/api/v1/products/*/reviews",
-    "/api/v1/products/*/rating-summary"
+    "/api/v1/products/*/rating-summary",
+    "/api/v1/company",
+    "/api/v1/contact/**"
   };
 
   private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -73,8 +75,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    return HttpMethod.GET.matches(request.getMethod())
-        && matchesPublicGetEndpoint(request.getServletPath());
+    return (HttpMethod.GET.matches(request.getMethod())
+            && matchesPublicGetEndpoint(request.getServletPath()))
+        || pathMatcher.match("/api/v1/contact/**", request.getServletPath());
   }
 
   private boolean matchesPublicGetEndpoint(String path) {

@@ -67,6 +67,17 @@ app:
 
   dashboard:
     low-stock-threshold: ${DASHBOARD_LOW_STOCK_THRESHOLD:10}
+  website:
+    company:
+      name: ${COMPANY_NAME:Smart E-Commerce}
+      description-en: ${COMPANY_DESCRIPTION_EN:Your trusted online shopping destination.}
+      description-ar: ${COMPANY_DESCRIPTION_AR:وجهتك الموثوقة للتسوق عبر الإنترنت.}
+      logo-url: ${COMPANY_LOGO_URL:}
+    contact:
+      email: ${CONTACT_EMAIL:support@example.com}
+      phone: ${CONTACT_PHONE:+962 6 000 0000}
+      address-en: ${CONTACT_ADDRESS_EN:Amman, Jordan}
+      address-ar: ${CONTACT_ADDRESS_AR:عمان، الأردن}
   file-storage:
     type: ${FILE_STORAGE_TYPE:local}
     upload-dir: ${FILE_UPLOAD_DIR:uploads}

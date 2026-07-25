@@ -36,7 +36,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableConfigurationProperties(
     {JwtProperties.class, AuthProperties.class, FileStorageProperties.class,
      AdminBootstrapProperties.class, DashboardProperties.class,
-     ReportProperties.class, BusinessTimeProperties.class})
+     ReportProperties.class, BusinessTimeProperties.class,
+     WebsiteContentProperties.class})
 public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -54,7 +55,8 @@ public class SecurityConfig {
             -> a.requestMatchers(HttpMethod.OPTIONS, "/**")
                    .permitAll()
                    .requestMatchers("/api/v1/auth/**", "/api/v1/login",
-                                    "/api/v1/health", "/v3/api-docs/**",
+                                    "/api/v1/health", "/api/v1/contact/**",
+                                    "/api/v1/company", "/v3/api-docs/**",
                                     "/swagger-ui/**", "/swagger-ui.html", "/uploads/**")
                    .permitAll()
                    .requestMatchers(HttpMethod.GET, "/api/v1/categories/**",
