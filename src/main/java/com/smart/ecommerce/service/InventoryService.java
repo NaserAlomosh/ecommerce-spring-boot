@@ -54,6 +54,14 @@ public class InventoryService {
           note == null ? "inventory.movement.order_cancelled" : note);
   }
   @Transactional
+  public void recordOrderStatusAdjustment(Product p, int change, Order o,
+                                          User by, String note) {
+    apply(p, InventoryMovementType.ORDER_STATUS_ADJUSTMENT, change, o, by,
+          note == null || note.isBlank()
+              ? "inventory.movement.order_status_adjustment"
+              : note);
+  }
+  @Transactional
   public void recordReturnedProduct(Product p, int qty, Order o, User by,
                                     String note) {
     apply(p, InventoryMovementType.PRODUCT_RETURNED, qty, o, by,
@@ -96,7 +104,8 @@ public class InventoryService {
     int before = after - change;
     if (after < 0)
       throw new IllegalArgumentException("inventory.error.negative_stock");
-    if (o != null && o.getId() != null &&
+    if (t != InventoryMovementType.ORDER_STATUS_ADJUSTMENT && o != null &&
+        o.getId() != null &&
         history.existsByOrderIdAndProductIdAndMovementType(o.getId(), p.getId(),
                                                            t))
       throw new IllegalArgumentException(
