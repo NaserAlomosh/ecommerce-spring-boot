@@ -259,6 +259,7 @@ public class InventoryReportService {
   public RestorationResponse restorations(Period p, InventoryMovementType mt,
                                           Pageable pg) {
     if (mt != null && mt != InventoryMovementType.ORDER_CANCELLED &&
+        mt != InventoryMovementType.ORDER_STATUS_ADJUSTMENT &&
         mt != InventoryMovementType.PRODUCT_RETURNED)
       throw new IllegalArgumentException(
           "report.inventory.error.unsupported_movement_type");
@@ -272,6 +273,8 @@ public class InventoryReportService {
                            -> x.movementType() ==
                                       InventoryMovementType.ORDER_CANCELLED ||
                                   x.movementType() ==
+                                      InventoryMovementType.ORDER_STATUS_ADJUSTMENT ||
+                                  x.movementType() ==
                                       InventoryMovementType.PRODUCT_RETURNED)
                    .map(x
                         -> new RestorationRow(
@@ -283,7 +286,9 @@ public class InventoryReportService {
     long c = rows.stream()
                  .filter(x
                          -> x.movementType() ==
-                                InventoryMovementType.ORDER_CANCELLED)
+                                InventoryMovementType.ORDER_CANCELLED ||
+                            x.movementType() ==
+                                InventoryMovementType.ORDER_STATUS_ADJUSTMENT)
                  .mapToLong(RestorationRow::quantityRestored)
                  .sum(),
          ret = rows.stream()
