@@ -4,6 +4,7 @@ import com.smart.ecommerce.config.AuthProperties;
 import com.smart.ecommerce.enums.SocialProvider;
 import java.util.EnumMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -27,6 +28,7 @@ public class SocialTokenVerifier {
   private final AuthProperties properties;
   private final Map<SocialProvider, JwtDecoder> decoders;
 
+  @Autowired
   public SocialTokenVerifier(AuthProperties properties) {
     this(properties, createDecoders(properties));
   }
