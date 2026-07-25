@@ -208,7 +208,7 @@ public class AuthService {
     t.setExpiresAt(Instant.now().plus(props.refreshTokenExpiration()));
     t.setCreatedByIp(ip);
     refreshTokens.save(t);
-    return new TokenResponse(jwt.generateToken(u), rt, jwt.expirationMillis());
+    return new TokenResponse(jwt.generateToken(u), rt, jwt.expirationMillis(), u.getRole());
   }
   private void checkUnique(String e, String p) {
     if (users.existsByEmail(e) || users.existsByPhoneNumber(p))

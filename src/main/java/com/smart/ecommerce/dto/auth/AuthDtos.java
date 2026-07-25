@@ -1,5 +1,6 @@
 package com.smart.ecommerce.dto.auth;
 
+import com.smart.ecommerce.enums.Role;
 import com.smart.ecommerce.enums.SocialProvider;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -22,7 +23,7 @@ public final class AuthDtos {
                              @NotBlank String password) {}
 
   public record TokenResponse(String accessToken, String refreshToken,
-                              long expiresInMillis) {}
+                              long expiresInMillis, Role role) {}
 
   public record RefreshRequest(@NotBlank String refreshToken) {}
 

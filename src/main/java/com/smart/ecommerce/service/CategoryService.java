@@ -5,6 +5,8 @@ import com.smart.ecommerce.entity.Category;
 import com.smart.ecommerce.exception.ResourceNotFoundException;
 import com.smart.ecommerce.repository.CategoryRepository;
 import java.util.List;
+import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -54,8 +56,12 @@ public class CategoryService {
   }
 
   private Category find(Long id) {
-    return categoryRepository.findById(id).orElseThrow(
-        () -> new ResourceNotFoundException("Category not found"));
+    final Optional<Category> category = categoryRepository.findById(id);
+    if (category.isEmpty()) {
+        throw new ResourceNotFoundException("Category not found");
+    } else {
+      return category.get();
+    }
   }
 
   private void map(CategoryRequest request, Category category) {
@@ -65,18 +71,22 @@ public class CategoryService {
   }
 
   private void validateUniqueNames(CategoryRequest request, Long currentId) {
-    categoryRepository.findByNameEnIgnoreCase(request.nameEn())
-        .filter(category -> !category.getId().equals(currentId))
-        .ifPresent(category -> {
-          throw new IllegalArgumentException(
-              "English category name already exists");
-        });
-    categoryRepository.findByNameArIgnoreCase(request.nameAr())
-        .filter(category -> !category.getId().equals(currentId))
-        .ifPresent(category -> {
-          throw new IllegalArgumentException(
-              "Arabic category name already exists");
-        });
+    if (categoryRepository.existsByNameEnIgnoreCaseAndIdNot(
+            request.nameEn().trim(),
+            currentId
+    )) {
+      throw new IllegalArgumentException(
+              "English category name already exists"
+      );
+    }
+    if (categoryRepository.existsByNameArIgnoreCaseAndIdNot(
+            request.nameAr().trim(),
+            currentId
+    )) {
+      throw new IllegalArgumentException(
+              "Arabic category name already exists"
+      );
+    }
   }
 
   private CategoryResponse toResponse(Category category) {
