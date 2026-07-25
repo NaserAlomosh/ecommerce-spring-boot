@@ -28,6 +28,7 @@ public class AuthService {
   private final EmailService emailService;
   private final TokenHashService hasher;
   private final UserMapper mapper;
+  private final SocialTokenVerifier socialTokenVerifier;
   private final SecureRandom random = new SecureRandom();
   @Transactional
   public UserResponse register(RegisterRequest r) {
@@ -135,21 +136,22 @@ public class AuthService {
   }
   @Transactional
   public TokenResponse social(SocialLoginRequest r, String ip) {
-    SocialClaims c = parseVerifiedDemoClaims(r.identityToken(), r.provider());
-    if (!c.emailVerified)
+    SocialTokenVerifier.VerifiedSocialClaims c =
+        socialTokenVerifier.verify(r.identityToken(), r.provider(), r.nonce());
+    if (!c.emailVerified())
       throw new BadCredentialsException("error.provider_email_unverified");
     SocialAccount acc =
-        socials.findByProviderAndProviderUserId(r.provider(), c.sub)
+        socials.findByProviderAndProviderUserId(r.provider(), c.subject())
             .orElse(null);
     User u = acc != null
                  ? acc.getUser()
-                 : users.findByEmail(norm(c.email)).orElseGet(() -> {
+                 : users.findByEmail(norm(c.email())).orElseGet(() -> {
                      User nu = new User();
-                     nu.setEmail(norm(c.email));
-                     nu.setFirstName(c.first);
-                     nu.setLastName(c.last);
+                     nu.setEmail(norm(c.email()));
+                     nu.setFirstName(c.firstName());
+                     nu.setLastName(c.lastName());
                      nu.setPhoneNumber(
-                         "+100000" + (Math.abs(c.sub.hashCode()) % 1000000000));
+                         "+100000" + (Math.abs(c.subject().hashCode()) % 1000000000));
                      nu.setPasswordHash(
                          encoder.encode(UUID.randomUUID().toString()));
                      nu.setRole(Role.CUSTOMER);
@@ -162,8 +164,8 @@ public class AuthService {
     if (acc == null) {
       acc = new SocialAccount();
       acc.setProvider(r.provider());
-      acc.setProviderUserId(c.sub);
-      acc.setProviderEmail(norm(c.email));
+      acc.setProviderUserId(c.subject());
+      acc.setProviderEmail(norm(c.email()));
       acc.setUser(u);
       socials.save(acc);
     }
@@ -216,15 +218,5 @@ public class AuthService {
   }
   private String norm(String e) {
     return e == null ? null : e.trim().toLowerCase();
-  }
-  record SocialClaims(String sub, String email, boolean emailVerified,
-                      String first, String last) {}
-  private SocialClaims parseVerifiedDemoClaims(String token, SocialProvider p) {
-    String[] s = token.split("\\|");
-    if (s.length < 3)
-      throw new BadCredentialsException("error.invalid_provider_token");
-    return new SocialClaims(s[0], s[1], Boolean.parseBoolean(s[2]),
-                            s.length > 3 ? s[3] : "Customer",
-                            s.length > 4 ? s[4] : p.name());
   }
 }
