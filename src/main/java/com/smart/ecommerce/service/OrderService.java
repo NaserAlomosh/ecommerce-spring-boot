@@ -169,10 +169,7 @@ public class OrderService {
     User u = ctx.currentCustomer();
     Order o = orders.lockWithItemsByOrderNumber(n).orElseThrow(
         () -> new ResourceNotFoundException("order.error.not_found"));
-    if (r.status() == OrderStatus.COMPLETED || r.status() == OrderStatus.FAILED)
-      throw new IllegalArgumentException(
-          "order.error.admin_cannot_complete_or_fail");
-    return changeStatus(o, r, u, "ADMIN");
+    return changeStatusAsAdmin(o, r, u);
   }
   @Transactional
   public OrderResponse adminCancel(String n, CancelOrderRequest r) {
@@ -240,6 +237,42 @@ public class OrderService {
       o.setCompletedAt(Instant.now());
     addHistory(o, prev, r.status(), u, role, r.note(), r.failureReason());
     return mapper.toResponse(o);
+  }
+  private OrderResponse changeStatusAsAdmin(Order o,
+                                            UpdateOrderStatusRequest r,
+                                            User u) {
+    OrderStatus prev = o.getStatus();
+    if (prev != OrderStatus.CANCELLED && r.status() == OrderStatus.CANCELLED)
+      adjustInventory(o, u, r.note(), 1);
+    else if (prev == OrderStatus.CANCELLED &&
+             r.status() != OrderStatus.CANCELLED)
+      adjustInventory(o, u, r.note(), -1);
+
+    o.setStatus(r.status());
+    o.setFailureReason(r.status() == OrderStatus.FAILED ? r.failureReason()
+                                                        : null);
+    o.setFailureNote(r.status() == OrderStatus.FAILED ? r.failureNote() : null);
+    o.setCancellationReason(r.status() == OrderStatus.CANCELLED ? r.note()
+                                                                : null);
+    o.setCancelledAt(r.status() == OrderStatus.CANCELLED ? Instant.now()
+                                                         : null);
+    o.setCompletedAt(r.status() == OrderStatus.COMPLETED ? Instant.now()
+                                                         : null);
+    addHistory(o, prev, r.status(), u, "ADMIN", r.note(), r.failureReason());
+    return mapper.toResponse(o);
+  }
+  private void adjustInventory(Order o, User u, String note, int direction) {
+    Map<Long, Integer> quantities =
+        o.getItems().stream().collect(Collectors.toMap(
+            OrderItem::getProductId, OrderItem::getQuantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> ps = products.lockWithImagesByIdIn(ids).stream().collect(
+        Collectors.toMap(Product::getId, Function.identity()));
+    if (ps.size() != ids.size())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+    for (Long id : ids)
+      inventory.recordOrderStatusAdjustment(
+          ps.get(id), direction * quantities.get(id), o, u, note);
   }
   private OrderResponse cancel(Order o, String reason, User u, String role,
                                boolean admin) {
