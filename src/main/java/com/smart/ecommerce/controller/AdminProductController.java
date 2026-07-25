@@ -26,12 +26,26 @@ public class AdminProductController {
                                productService.create(product, images));
   }
 
-  @PutMapping("/{productId}")
+  @PutMapping(value = "/{productId}",
+              consumes = MediaType.APPLICATION_JSON_VALUE)
   public ApiResponse<ProductResponse>
   updateProduct(@PathVariable Long productId,
                 @Valid @RequestBody ProductUpdateRequest product) {
     return ApiResponse.success(messages.getMessage("admin.product_updated"),
                                productService.update(productId, product));
+  }
+
+  @PutMapping(value = "/{productId}",
+              consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ApiResponse<ProductResponse>
+  updateProductWithImages(
+      @PathVariable Long productId,
+      @Valid @RequestPart("product") ProductUpdateRequest product,
+      @RequestPart(value = "images",
+                   required = false) List<MultipartFile> images) {
+    return ApiResponse.success(
+        messages.getMessage("admin.product_updated"),
+        productService.update(productId, product, images));
   }
 
   @PostMapping(value = "/{productId}/images",

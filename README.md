@@ -463,7 +463,17 @@ Accept-Language: ar
 
 ## Product image storage
 
-Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Product pricing uses ISO 4217 currency codes: `currency` is optional on creation, defaults to `JOD` when omitted, null, or blank, is normalized to uppercase, and responses that expose prices include currency. Currency symbols such as `JD`, `د.أ`, or `$` are not accepted; currently supported currency codes include `JOD`. Example product request: `{ "nameEn": "Wireless Headphones", "nameAr": "سماعات لاسلكية", "sku": "WH-10", "price": 49.99, "currency": "JOD" }`. Example product response includes `{ "id": 10, "nameEn": "Wireless Headphones", "price": 49.99, "currency": "JOD" }`. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
+Admin product creation accepts `multipart/form-data` at `POST /api/v1/admin/products` with a JSON `product` part and zero or more `images` parts. Updates can use the same multipart structure at `PUT /api/v1/admin/products/{productId}` to change product fields and append images in one request; the existing JSON-only update remains supported. Each image must be sent as another `images` part. Product pricing uses ISO 4217 currency codes: `currency` is optional on creation, defaults to `JOD` when omitted, null, or blank, is normalized to uppercase, and responses that expose prices include currency. Currency symbols such as `JD`, `د.أ`, or `$` are not accepted; currently supported currency codes include `JOD`. Example product request: `{ "nameEn": "Wireless Headphones", "nameAr": "سماعات لاسلكية", "sku": "WH-10", "price": 49.99, "currency": "JOD" }`. Example product response includes `{ "id": 10, "nameEn": "Wireless Headphones", "price": 49.99, "currency": "JOD" }`. Uploaded images are stored on the local filesystem under `${FILE_UPLOAD_DIR:uploads}/products` and exposed publicly at `/uploads/products/{fileName}`. Only JPEG, PNG, and WebP uploads are accepted; files are size-limited by `MAX_IMAGE_SIZE` (default `5MB`) and each product is limited by `MAX_IMAGES_PER_PRODUCT` (default `10`).
+
+For example, an admin can update a product and append two images with:
+
+```bash
+curl --request PUT 'http://localhost:8080/api/v1/admin/products/10' \
+  --header 'Authorization: Bearer <adminAccessToken>' \
+  --form 'product={"categoryId":1,"nameEn":"Wireless Headphones","nameAr":"سماعات لاسلكية","sku":"WH-10","price":49.99,"currency":"JOD","stockQuantity":20,"lowStockThreshold":5,"active":true,"featured":false};type=application/json' \
+  --form 'images=@front.jpg;type=image/jpeg' \
+  --form 'images=@side.webp;type=image/webp'
+```
 
 Image binary data is never stored in MySQL. The `product_images` table stores only the generated public URL and storage path. File names are generated with UUID values and safe extensions derived from validated content types. Product soft deletion retains image files for audit/restoration; physical files are deleted when an image record is explicitly deleted or replaced.
 

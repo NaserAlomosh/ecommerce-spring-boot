@@ -91,24 +91,37 @@ public class ProductService {
 
   @Transactional
   public ProductResponse update(Long productId, ProductUpdateRequest request) {
+    return update(productId, request, null);
+  }
+
+  @Transactional
+  public ProductResponse update(Long productId, ProductUpdateRequest request,
+                                List<MultipartFile> images) {
     validatePrices(request.price(), request.discountPrice());
-    Product product =
-        productRepository.lockWithImagesById(productId).orElseThrow(
-            () -> new ResourceNotFoundException("Product not found"));
-    Category category =
-        categoryRepository.findById(request.categoryId())
-            .orElseThrow(
-                () -> new ResourceNotFoundException("Category not found"));
-    if (!category.isActive())
-      throw new IllegalArgumentException("Product category must be active");
-    product.setCategory(category);
-    mapProductFields(request, product);
-    if (product.getStockQuantity() != request.stockQuantity())
-      inventoryService.recordProductStockUpdated(
-          product, request.stockQuantity(),
-          customerContextService.currentCustomer(),
-          "inventory.movement.product_updated");
-    return toResponse(productRepository.save(product));
+    List<StoredFile> stored = new ArrayList<>();
+    try {
+      Product product =
+          productRepository.lockWithImagesById(productId).orElseThrow(
+              () -> new ResourceNotFoundException("Product not found"));
+      Category category =
+          categoryRepository.findById(request.categoryId())
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Category not found"));
+      if (!category.isActive())
+        throw new IllegalArgumentException("Product category must be active");
+      product.setCategory(category);
+      mapProductFields(request, product);
+      if (product.getStockQuantity() != request.stockQuantity())
+        inventoryService.recordProductStockUpdated(
+            product, request.stockQuantity(),
+            customerContextService.currentCustomer(),
+            "inventory.movement.product_updated");
+      addImages(product, images, stored);
+      return toResponse(productRepository.save(product));
+    } catch (RuntimeException ex) {
+      stored.forEach(f -> storageService.delete(f.storagePath()));
+      throw ex;
+    }
   }
 
   @Transactional
