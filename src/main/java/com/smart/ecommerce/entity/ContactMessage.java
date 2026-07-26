@@ -3,6 +3,7 @@ package com.smart.ecommerce.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,4 +26,10 @@ public class ContactMessage extends BaseEntity {
 
   @Column(nullable = false, length = 5000)
   private String message;
+
+  @Column(name = "is_read", nullable = false)
+  private boolean read;
+
+  @Column(name = "read_at")
+  private Instant readAt;
 }
