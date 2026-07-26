@@ -19,12 +19,10 @@ public class CartService {
   private final CartItemRepository items;
   private final ProductRepository products;
   private final CustomerContextService ctx;
-  @Transactional(readOnly = true)
+  @Transactional
   public CartResponse get() {
     User u = ctx.currentCustomer();
-    return toResponse(
-        carts.findByCustomerIdAndStatus(u.getId(), CartStatus.ACTIVE)
-            .orElse(empty(u)));
+    return toResponse(activeCart(u));
   }
   @Transactional
   public CartResponse add(AddCartItemRequest r) {
@@ -34,13 +32,9 @@ public class CartService {
             .orElseThrow(
                 () -> new ResourceNotFoundException("Product not found"));
     validateAvailable(p);
-    Cart c = carts.lockByCustomerIdAndStatus(u.getId(), CartStatus.ACTIVE)
-                 .orElseGet(() -> {
-                   Cart n = new Cart();
-                   n.setCustomer(u);
-                   n.setStatus(CartStatus.ACTIVE);
-                   return carts.save(n);
-                 });
+    Cart c =
+        carts.lockByCustomerIdAndStatus(u.getId(), CartStatus.ACTIVE)
+            .orElseGet(() -> carts.save(empty(u)));
     CartItem it =
         items.findByCartIdAndProductId(c.getId(), p.getId()).orElse(null);
     int q = r.quantity() + (it == null ? 0 : it.getQuantity());
@@ -84,6 +78,10 @@ public class CartService {
     if (!it.getCart().getCustomer().getId().equals(u.getId()))
       throw new ResourceNotFoundException("Cart item not found");
     return it;
+  }
+  private Cart activeCart(User u) {
+    return carts.findByCustomerIdAndStatus(u.getId(), CartStatus.ACTIVE)
+        .orElseGet(() -> carts.save(empty(u)));
   }
   private Cart empty(User u) {
     Cart c = new Cart();
