@@ -9,7 +9,12 @@ public final class WebsiteDtos {
   private WebsiteDtos() {}
 
   public record CompanyResponse(String name, String descriptionEn,
-                                String descriptionAr, String logoUrl) {}
+                                String descriptionAr, String logoUrl,
+                                String ownerNameEn, String ownerNameAr,
+                                String ownerImageUrl, String locationUrl,
+                                String locationName, String instagramUrl,
+                                String facebookUrl, String tiktokUrl,
+                                String linkedinUrl) {}
 
   public record ContactResponse(String email, String phone, String addressEn,
                                 String addressAr) {}

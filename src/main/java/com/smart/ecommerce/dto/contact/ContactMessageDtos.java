@@ -6,6 +6,8 @@ import java.time.Instant;
 public final class ContactMessageDtos {
   private ContactMessageDtos() {}
 
+  public record UnreadMessageCountResponse(long unreadCount) {}
+
   public record AdminContactMessageResponse(
       Long id,
       String name,

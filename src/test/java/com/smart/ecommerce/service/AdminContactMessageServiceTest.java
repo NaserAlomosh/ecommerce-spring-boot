@@ -53,6 +53,14 @@ class AdminContactMessageServiceTest {
   }
 
   @Test
+  void returnsUnreadMessageCount() {
+    when(repository.countByRead(false)).thenReturn(12L);
+
+    assertThat(service.unreadCount().unreadCount()).isEqualTo(12L);
+    verify(repository).countByRead(false);
+  }
+
+  @Test
   void marksMessageReadAndRecordsTimestamp() {
     ContactMessage message = message(7L, false);
     when(repository.findById(7L)).thenReturn(Optional.of(message));
