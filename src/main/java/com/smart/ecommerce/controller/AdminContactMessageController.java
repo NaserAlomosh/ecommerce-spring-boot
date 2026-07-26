@@ -4,6 +4,7 @@ import com.smart.ecommerce.dto.ApiResponse;
 import com.smart.ecommerce.dto.PaginationResponse;
 import com.smart.ecommerce.dto.contact.ContactMessageDtos.AdminContactMessageResponse;
 import com.smart.ecommerce.dto.contact.ContactMessageDtos.UpdateReadStatusRequest;
+import com.smart.ecommerce.dto.contact.ContactMessageDtos.UnreadMessageCountResponse;
 import com.smart.ecommerce.service.AdminContactMessageService;
 import com.smart.ecommerce.util.MessageUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,14 @@ public class AdminContactMessageController {
     return ApiResponse.success(
         messages.getMessage("admin.contact_messages.loaded"),
         service.list(read, pageable));
+  }
+
+  @Operation(summary = "Get the number of unread contact messages")
+  @GetMapping("/unread-count")
+  public ApiResponse<UnreadMessageCountResponse> unreadCount() {
+    return ApiResponse.success(
+        messages.getMessage("admin.contact_messages.unread_count_loaded"),
+        service.unreadCount());
   }
 
   @Operation(

@@ -20,7 +20,12 @@ public class WebsiteService {
   public CompanyResponse company() {
     var company = properties.company();
     return new CompanyResponse(company.name(), company.descriptionEn(),
-                               company.descriptionAr(), company.logoUrl());
+                               company.descriptionAr(), company.logoUrl(),
+                               company.ownerNameEn(), company.ownerNameAr(),
+                               company.ownerImageUrl(), company.locationUrl(),
+                               company.locationName(), company.instagramUrl(),
+                               company.facebookUrl(), company.tiktokUrl(),
+                               company.linkedinUrl());
   }
 
   public ContactResponse contact() {

@@ -2,6 +2,7 @@ package com.smart.ecommerce.service;
 
 import com.smart.ecommerce.dto.PaginationResponse;
 import com.smart.ecommerce.dto.contact.ContactMessageDtos.AdminContactMessageResponse;
+import com.smart.ecommerce.dto.contact.ContactMessageDtos.UnreadMessageCountResponse;
 import com.smart.ecommerce.entity.ContactMessage;
 import com.smart.ecommerce.exception.ResourceNotFoundException;
 import com.smart.ecommerce.repository.ContactMessageRepository;
@@ -20,6 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminContactMessageService {
   private final ContactMessageRepository repository;
   private final Clock clock;
+
+  @Transactional(readOnly = true)
+  public UnreadMessageCountResponse unreadCount() {
+    return new UnreadMessageCountResponse(repository.countByRead(false));
+  }
 
   @Transactional(readOnly = true)
   public PaginationResponse<AdminContactMessageResponse> list(

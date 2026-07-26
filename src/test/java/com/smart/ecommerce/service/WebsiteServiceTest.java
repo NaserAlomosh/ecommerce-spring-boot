@@ -24,13 +24,26 @@ class WebsiteServiceTest {
   void returnsConfiguredCompanyAndContactDetails() {
     var properties =
         new WebsiteContentProperties(
-            new WebsiteContentProperties.Company("Smart", "About", "عنا", "/logo.png"),
+            new WebsiteContentProperties.Company(
+                "Smart", "About", "عنا", "/logo.png", "Ahmad", "أحمد",
+                "/owner.png", "https://maps.example.com", "Amman HQ",
+                "https://instagram.com/smart", "https://facebook.com/smart",
+                "https://tiktok.com/@smart", "https://linkedin.com/company/smart"),
             new WebsiteContentProperties.Contact(
                 "help@example.com", "+962", "Amman", "عمان"));
     var service = new WebsiteService(properties, repository);
 
     assertThat(service.company().name()).isEqualTo("Smart");
     assertThat(service.company().descriptionAr()).isEqualTo("عنا");
+    assertThat(service.company().ownerNameEn()).isEqualTo("Ahmad");
+    assertThat(service.company().ownerNameAr()).isEqualTo("أحمد");
+    assertThat(service.company().ownerImageUrl()).isEqualTo("/owner.png");
+    assertThat(service.company().locationUrl()).isEqualTo("https://maps.example.com");
+    assertThat(service.company().locationName()).isEqualTo("Amman HQ");
+    assertThat(service.company().instagramUrl()).isEqualTo("https://instagram.com/smart");
+    assertThat(service.company().facebookUrl()).isEqualTo("https://facebook.com/smart");
+    assertThat(service.company().tiktokUrl()).isEqualTo("https://tiktok.com/@smart");
+    assertThat(service.company().linkedinUrl()).isEqualTo("https://linkedin.com/company/smart");
     assertThat(service.contact().email()).isEqualTo("help@example.com");
     assertThat(service.contact().addressAr()).isEqualTo("عمان");
   }
