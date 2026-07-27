@@ -21,17 +21,24 @@ public class CloudinaryFileStorageService implements FileStorageService {
 
   @Override
   public StoredFile storeProductImage(MultipartFile file) {
+    return storeImage(file, properties.getCloudinary().getFolder());
+  }
+
+  @Override
+  public StoredFile storeWebsiteImage(MultipartFile file) {
+    return storeImage(file, properties.getCloudinary().getFolder() + "/website");
+  }
+
+  private StoredFile storeImage(MultipartFile file, String folder) {
     String contentType = file.getContentType();
     imageFileValidator.validateAndGetExtension(file);
 
-    FileStorageProperties.Cloudinary cloudinaryProperties =
-        properties.getCloudinary();
     String publicId = UUID.randomUUID().toString();
     try {
       Map<?, ?> result = cloudinary().uploader().upload(
           file.getBytes(),
-          ObjectUtils.asMap("folder", cloudinaryProperties.getFolder(),
-                            "public_id", publicId, "resource_type", "image"));
+          ObjectUtils.asMap("folder", folder, "public_id", publicId,
+                            "resource_type", "image"));
       String secureUrl = (String)result.get("secure_url");
       String storedPublicId = (String)result.get("public_id");
       return new StoredFile(secureUrl, storedPublicId, contentType,
