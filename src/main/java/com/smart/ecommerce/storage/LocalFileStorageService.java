@@ -19,9 +19,18 @@ public class LocalFileStorageService implements FileStorageService {
 
   @Override
   public StoredFile storeProductImage(MultipartFile file) {
+    return storeImage(file, "products");
+  }
+
+  @Override
+  public StoredFile storeWebsiteImage(MultipartFile file) {
+    return storeImage(file, "website");
+  }
+
+  private StoredFile storeImage(MultipartFile file, String directory) {
     String contentType = file.getContentType();
     String extension = imageFileValidator.validateAndGetExtension(file);
-    Path root = root().resolve("products").normalize();
+    Path root = root().resolve(directory).normalize();
     String fileName = UUID.randomUUID() + extension;
     Path destination = root.resolve(fileName).normalize();
     if (!destination.startsWith(root))
@@ -32,8 +41,9 @@ public class LocalFileStorageService implements FileStorageService {
     } catch (IOException ex) {
       throw new IllegalStateException("Could not store image", ex);
     }
-    return new StoredFile("/uploads/products/" + fileName,
-                          "products/" + fileName, contentType, file.getSize());
+    return new StoredFile("/uploads/" + directory + "/" + fileName,
+                          directory + "/" + fileName, contentType,
+                          file.getSize());
   }
 
   @Override

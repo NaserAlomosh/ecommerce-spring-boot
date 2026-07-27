@@ -26,6 +26,9 @@ public class WebsiteSettings extends BaseEntity {
   @Column(length = 1000)
   private String companyLogoUrl;
 
+  @Column(length = 1000)
+  private String companyLogoStoragePath;
+
   @Column(length = 200)
   private String ownerNameEn;
 
@@ -34,6 +37,9 @@ public class WebsiteSettings extends BaseEntity {
 
   @Column(length = 1000)
   private String ownerImageUrl;
+
+  @Column(length = 1000)
+  private String ownerImageStoragePath;
 
   @Column(length = 1000)
   private String locationUrl;

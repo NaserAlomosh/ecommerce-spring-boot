@@ -11,9 +11,14 @@ import com.smart.ecommerce.entity.ContactMessage;
 import com.smart.ecommerce.entity.WebsiteSettings;
 import com.smart.ecommerce.repository.ContactMessageRepository;
 import com.smart.ecommerce.repository.WebsiteSettingsRepository;
+import com.smart.ecommerce.storage.FileStorageService;
+import com.smart.ecommerce.storage.StoredFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +28,7 @@ public class WebsiteService {
   private final WebsiteContentProperties properties;
   private final ContactMessageRepository contactMessageRepository;
   private final WebsiteSettingsRepository websiteSettingsRepository;
+  private final FileStorageService storageService;
 
   @Transactional(readOnly = true)
   public CompanyResponse company() {
@@ -39,15 +45,19 @@ public class WebsiteService {
   }
 
   @Transactional
-  public CompanyResponse updateCompany(CompanyUpdateRequest request) {
+  public CompanyResponse updateCompany(CompanyUpdateRequest request,
+                                       MultipartFile logo,
+                                       MultipartFile ownerImage) {
     WebsiteSettings settings = settings();
+    StoredFile storedLogo = storeIfPresent(logo);
+    StoredFile storedOwnerImage = storeIfPresent(ownerImage);
+    String oldLogoPath = settings.getCompanyLogoStoragePath();
+    String oldOwnerImagePath = settings.getOwnerImageStoragePath();
     settings.setCompanyName(request.name().trim());
     settings.setCompanyDescriptionEn(normalizeOptional(request.descriptionEn()));
     settings.setCompanyDescriptionAr(normalizeOptional(request.descriptionAr()));
-    settings.setCompanyLogoUrl(normalizeOptional(request.logoUrl()));
     settings.setOwnerNameEn(normalizeOptional(request.ownerNameEn()));
     settings.setOwnerNameAr(normalizeOptional(request.ownerNameAr()));
-    settings.setOwnerImageUrl(normalizeOptional(request.ownerImageUrl()));
     settings.setLocationUrl(normalizeOptional(request.locationUrl()));
     settings.setLocationName(normalizeOptional(request.locationName()));
     settings.setInstagramUrl(normalizeOptional(request.instagramUrl()));
@@ -55,7 +65,18 @@ public class WebsiteService {
     settings.setTiktokUrl(normalizeOptional(request.tiktokUrl()));
     settings.setLinkedinUrl(normalizeOptional(request.linkedinUrl()));
     settings.setCompanyActive(request.active());
-    return companyResponse(websiteSettingsRepository.save(settings));
+    applyLogo(settings, storedLogo);
+    applyOwnerImage(settings, storedOwnerImage);
+    try {
+      WebsiteSettings saved = websiteSettingsRepository.save(settings);
+      deleteAfterCommit(storedLogo == null ? null : oldLogoPath);
+      deleteAfterCommit(storedOwnerImage == null ? null : oldOwnerImagePath);
+      return companyResponse(saved);
+    } catch (RuntimeException ex) {
+      deleteStored(storedLogo);
+      deleteStored(storedOwnerImage);
+      throw ex;
+    }
   }
 
   @Transactional
@@ -113,6 +134,62 @@ public class WebsiteService {
     settings.setContactAddressEn(contact.addressEn());
     settings.setContactAddressAr(contact.addressAr());
     return settings;
+  }
+
+  private StoredFile storeIfPresent(MultipartFile file) {
+    if (file == null || file.isEmpty())
+      return null;
+    StoredFile stored = storageService.storeWebsiteImage(file);
+    deleteOnRollback(stored.storagePath());
+    return stored;
+  }
+
+  private void applyLogo(WebsiteSettings settings, StoredFile stored) {
+    if (stored == null)
+      return;
+    settings.setCompanyLogoUrl(stored.imageUrl());
+    settings.setCompanyLogoStoragePath(stored.storagePath());
+  }
+
+  private void applyOwnerImage(WebsiteSettings settings, StoredFile stored) {
+    if (stored == null)
+      return;
+    settings.setOwnerImageUrl(stored.imageUrl());
+    settings.setOwnerImageStoragePath(stored.storagePath());
+  }
+
+  private void deleteStored(StoredFile stored) {
+    if (stored != null)
+      storageService.delete(stored.storagePath());
+  }
+
+  private void deleteOnRollback(String path) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive())
+      return;
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            if (status != STATUS_COMMITTED)
+              storageService.delete(path);
+          }
+        });
+  }
+
+  private void deleteAfterCommit(String path) {
+    if (path == null || path.isBlank())
+      return;
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      storageService.delete(path);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            storageService.delete(path);
+          }
+        });
   }
 
   private CompanyResponse companyResponse(WebsiteSettings settings) {

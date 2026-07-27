@@ -9,10 +9,13 @@ import com.smart.ecommerce.service.WebsiteService;
 import com.smart.ecommerce.util.MessageUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,11 +24,17 @@ public class AdminWebsiteController {
   private final WebsiteService websiteService;
   private final MessageUtil messages;
 
-  @PutMapping("/company")
+  @PutMapping(value = "/company",
+              consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ApiResponse<CompanyResponse>
-  updateCompany(@Valid @RequestBody CompanyUpdateRequest request) {
+  updateCompany(@Valid @RequestPart("company") CompanyUpdateRequest request,
+                @RequestPart(value = "logo", required = false)
+                MultipartFile logo,
+                @RequestPart(value = "ownerImage", required = false)
+                MultipartFile ownerImage) {
     return ApiResponse.success(messages.getMessage("admin.company_updated"),
-                               websiteService.updateCompany(request));
+                               websiteService.updateCompany(request, logo,
+                                                            ownerImage));
   }
 
   @PutMapping("/contact")
