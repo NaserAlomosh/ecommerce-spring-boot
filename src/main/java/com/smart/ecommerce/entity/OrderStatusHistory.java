@@ -28,7 +28,7 @@ public class OrderStatusHistory extends BaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "new_status", nullable = false, length = 30)
   private OrderStatus newStatus;
-  @Column(name = "changed_by_user_id", nullable = false)
+  @Column(name = "changed_by_user_id")
   private Long changedByUserId;
   @Column(name = "changed_by_role", nullable = false, length = 30)
   private String changedByRole;
