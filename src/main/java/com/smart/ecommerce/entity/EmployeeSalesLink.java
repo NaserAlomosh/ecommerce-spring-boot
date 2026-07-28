@@ -12,7 +12,8 @@ import lombok.Setter;
        uniqueConstraints = @UniqueConstraint(name = "uk_employee_sales_links_token_hash",
                                              columnNames = "token_hash"))
 public class EmployeeSalesLink extends BaseEntity {
-  @Column(name = "token_hash", nullable = false, length = 64)
+  @Column(name = "token_hash", nullable = false, length = 64,
+          columnDefinition = "char(64)")
   private String tokenHash;
   @ManyToOne(optional = false, fetch = FetchType.LAZY)
   @JoinColumn(name = "employee_id", nullable = false)
