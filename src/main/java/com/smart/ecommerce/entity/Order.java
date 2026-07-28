@@ -31,9 +31,15 @@ import org.hibernate.annotations.BatchSize;
 public class Order extends BaseEntity {
   @Column(name = "order_number", nullable = false, unique = true, length = 30)
   private String orderNumber;
-  @ManyToOne(optional = false, fetch = FetchType.LAZY)
-  @JoinColumn(name = "customer_id", nullable = false)
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "customer_id")
   private User customer;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "sales_link_id")
+  private EmployeeSalesLink salesLink;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "referred_by_user_id")
+  private User referredByUser;
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assigned_delivery_user_id")
   private User assignedDeliveryUser;
