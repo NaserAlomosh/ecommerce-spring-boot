@@ -5,6 +5,8 @@ import com.smart.ecommerce.dto.website.WebsiteDtos.CompanyResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.CompanyUpdateRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactUpdateRequest;
+import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkResponse;
+import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkUpdateRequest;
 import com.smart.ecommerce.service.WebsiteService;
 import com.smart.ecommerce.util.MessageUtil;
 import jakarta.validation.Valid;
@@ -42,5 +44,13 @@ public class AdminWebsiteController {
   updateContact(@Valid @RequestBody ContactUpdateRequest request) {
     return ApiResponse.success(messages.getMessage("admin.contact_updated"),
                                websiteService.updateContact(request));
+  }
+
+  @PutMapping("/social-sales-link")
+  public ApiResponse<SocialSalesLinkResponse> updateSocialSalesLink(
+      @Valid @RequestBody SocialSalesLinkUpdateRequest request) {
+    return ApiResponse.success(
+        messages.getMessage("admin.social_sales_link_updated"),
+        websiteService.updateSocialSalesLink(request));
   }
 }

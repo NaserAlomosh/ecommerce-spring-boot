@@ -7,6 +7,8 @@ import com.smart.ecommerce.dto.website.WebsiteDtos.ContactMessageRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactMessageResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactUpdateRequest;
+import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkResponse;
+import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkUpdateRequest;
 import com.smart.ecommerce.entity.ContactMessage;
 import com.smart.ecommerce.entity.WebsiteSettings;
 import com.smart.ecommerce.repository.ContactMessageRepository;
@@ -42,6 +44,23 @@ public class WebsiteService {
     return websiteSettingsRepository.findBySettingsKey(DEFAULT_SETTINGS_KEY)
         .map(this::contactResponse)
         .orElseGet(this::configuredContactResponse);
+  }
+
+  @Transactional(readOnly = true)
+  public SocialSalesLinkResponse socialSalesLink() {
+    String url = websiteSettingsRepository.findBySettingsKey(
+        DEFAULT_SETTINGS_KEY).map(WebsiteSettings::getSocialSalesLink)
+        .orElse(null);
+    return new SocialSalesLinkResponse(url);
+  }
+
+  @Transactional
+  public SocialSalesLinkResponse updateSocialSalesLink(
+      SocialSalesLinkUpdateRequest request) {
+    WebsiteSettings settings = settings();
+    settings.setSocialSalesLink(request.url().trim());
+    return new SocialSalesLinkResponse(
+        websiteSettingsRepository.save(settings).getSocialSalesLink());
   }
 
   @Transactional
