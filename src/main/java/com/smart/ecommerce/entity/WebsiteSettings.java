@@ -59,6 +59,9 @@ public class WebsiteSettings extends BaseEntity {
   @Column(length = 1000)
   private String linkedinUrl;
 
+  @Column(length = 1000)
+  private String socialSalesLink;
+
   @Column(nullable = false)
   private boolean companyActive = true;
 
