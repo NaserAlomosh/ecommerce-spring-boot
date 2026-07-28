@@ -29,11 +29,12 @@ public interface DashboardOrderRepository extends JpaRepository<Order, Long> {
 
   @Query("""
             select o.orderNumber as orderNumber,
-                   concat(c.firstName, ' ', c.lastName) as customerName,
+                   coalesce(concat(c.firstName, ' ', c.lastName),
+                            o.recipientName) as customerName,
                    o.totalAmount as totalAmount,
                    o.status as status,
                    o.createdAt as createdAt
-            from Order o join o.customer c
+            from Order o left join o.customer c
             order by o.createdAt desc
             """) List<LatestOrderProjection> findLatestOrders(Pageable pageable);
 

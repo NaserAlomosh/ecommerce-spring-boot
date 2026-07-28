@@ -33,6 +33,39 @@ public class OrderService {
   private final OrderStatusTransitionService transitions;
   private final OrderMapper mapper;
   @Transactional
+  public OrderResponse createPublic(PublicOrderRequest r) {
+    Map<Long, Integer> quantities = r.products().stream().collect(
+        Collectors.toMap(PublicOrderItemRequest::productId,
+                         PublicOrderItemRequest::quantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> locked = products.lockWithImagesByIdIn(ids).stream()
+        .collect(Collectors.toMap(Product::getId, Function.identity()));
+    if (locked.size() != ids.size())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+
+    Order o = new Order();
+    o.setOrderNumber(numbers.generate());
+    o.setStatus(OrderStatus.PENDING);
+    o.setCustomerNote(r.customerNote());
+    o.setRecipientName(r.name().trim());
+    o.setPhoneNumber(r.phoneNumber().trim());
+    o.setCity(r.location().city().trim());
+    o.setLatitude(r.location().latitude());
+    o.setLongitude(r.location().longitude());
+    o.setArea(normalize(r.location().area()));
+    o.setStreet(normalize(r.location().street()));
+    o.setAdditionalDirections(
+        normalize(r.location().additionalDirections()));
+    populateItemsAndTotals(o, ids, quantities, locked);
+    addHistory(o, null, OrderStatus.PENDING, null, "PUBLIC", null, null);
+    Order saved = orders.saveAndFlush(o);
+    for (Long productId : ids)
+      inventory.recordOrderCreated(locked.get(productId),
+                                   quantities.get(productId), saved, null);
+    return mapper.toResponse(saved);
+  }
+
+  @Transactional
   public OrderResponse create(CreateOrderRequest r) {
     User u = ctx.currentCustomer();
     if (u.getRole() != Role.CUSTOMER)
@@ -67,6 +100,18 @@ public class OrderService {
     o.setStatus(OrderStatus.PENDING);
     o.setCustomerNote(r.customerNote());
     snapshotAddress(o, a);
+    populateItemsAndTotals(o, ids, quantities, locked);
+    addHistory(o, null, OrderStatus.PENDING, u, "CUSTOMER", null, null);
+    Order saved = orders.saveAndFlush(o);
+    for (Long productId : ids)
+      inventory.recordOrderCreated(locked.get(productId),
+                                   quantities.get(productId), saved, u);
+    cartItems.deleteByCartId(cart.getId());
+    return mapper.toResponse(saved);
+  }
+  private void populateItemsAndTotals(Order o, List<Long> ids,
+                                      Map<Long, Integer> quantities,
+                                      Map<Long, Product> locked) {
     BigDecimal subtotal = BigDecimal.ZERO.setScale(3);
     int totalItems = 0;
     String currency = null;
@@ -102,13 +147,6 @@ public class OrderService {
                                     .add(o.getDeliveryFee())
                                     .subtract(o.getDiscountAmount())));
     o.setTotalItems(totalItems);
-    addHistory(o, null, OrderStatus.PENDING, u, "CUSTOMER", null, null);
-    Order saved = orders.saveAndFlush(o);
-    for (Long productId : ids)
-      inventory.recordOrderCreated(locked.get(productId),
-                                   quantities.get(productId), saved, u);
-    cartItems.deleteByCartId(cart.getId());
-    return mapper.toResponse(saved);
   }
   @Transactional(readOnly = true)
   public PaginationResponse<OrderSummaryResponse>
@@ -345,7 +383,7 @@ public class OrderService {
     h.setOrder(o);
     h.setPreviousStatus(prev);
     h.setNewStatus(next);
-    h.setChangedByUserId(u.getId());
+    h.setChangedByUserId(u == null ? null : u.getId());
     h.setChangedByRole(role);
     h.setNote(note);
     h.setFailureReason(reason);
@@ -359,4 +397,7 @@ public class OrderService {
                               : Sort.by(Sort.Direction.DESC, "createdAt"));
   }
   private String blank(String s) { return s == null || s.isBlank() ? null : s; }
+  private String normalize(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
+  }
 }

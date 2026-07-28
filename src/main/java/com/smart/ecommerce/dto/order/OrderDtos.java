@@ -2,6 +2,7 @@ package com.smart.ecommerce.dto.order;
 
 import com.smart.ecommerce.enums.DeliveryFailureReason;
 import com.smart.ecommerce.enums.OrderStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,6 +12,20 @@ public final class OrderDtos {
   private OrderDtos() {}
   public record CreateOrderRequest(@NotNull @Positive Long addressId,
                                    @Size(max = 1000) String customerNote) {}
+  public record PublicOrderItemRequest(@NotNull @Positive Long productId,
+                                       @NotNull @Positive Integer quantity) {}
+  public record PublicOrderLocationRequest(
+      @NotBlank @Size(max = 100) String city,
+      @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") BigDecimal latitude,
+      @NotNull @DecimalMin("-180.0") @DecimalMax("180.0") BigDecimal longitude,
+      @Size(max = 100) String area, @Size(max = 255) String street,
+      @Size(max = 500) String additionalDirections) {}
+  public record PublicOrderRequest(
+      @NotBlank @Size(max = 150) String name,
+      @NotBlank @Pattern(regexp = "^\\+?[0-9]{8,15}$") String phoneNumber,
+      @NotNull @Valid PublicOrderLocationRequest location,
+      @NotEmpty List<@Valid PublicOrderItemRequest> products,
+      @Size(max = 1000) String customerNote) {}
   public record CancelOrderRequest(@NotBlank @Size(max = 500) String reason) {}
   public record AssignDeliveryRequest(@NotNull @Positive Long deliveryUserId) {}
   public record UpdateOrderStatusRequest(@NotNull OrderStatus status,
