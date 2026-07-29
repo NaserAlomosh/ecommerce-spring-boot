@@ -20,6 +20,11 @@ public final class WebsiteDtos {
   public record ContactResponse(String email, String phone, String addressEn,
                                 String addressAr, boolean active) {}
 
+  public record SocialSalesLinkResponse(String url) {}
+
+  public record SocialSalesLinkUpdateRequest(
+      @NotBlank @Size(max = 1000) String url) {}
+
   public record CompanyUpdateRequest(
       @NotBlank @Size(max = 200) String name,
       @Size(max = 2000) String descriptionEn,
