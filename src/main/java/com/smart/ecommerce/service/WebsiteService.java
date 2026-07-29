@@ -7,6 +7,8 @@ import com.smart.ecommerce.dto.website.WebsiteDtos.ContactMessageRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactMessageResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactUpdateRequest;
+import com.smart.ecommerce.dto.website.WebsiteDtos.GuestOrderLinkResponse;
+import com.smart.ecommerce.dto.website.WebsiteDtos.GuestOrderLinkUpdateRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkUpdateRequest;
 import com.smart.ecommerce.entity.ContactMessage;
@@ -61,6 +63,23 @@ public class WebsiteService {
     settings.setSocialSalesLink(request.url().trim());
     return new SocialSalesLinkResponse(
         websiteSettingsRepository.save(settings).getSocialSalesLink());
+  }
+
+  @Transactional(readOnly = true)
+  public GuestOrderLinkResponse guestOrderLink() {
+    String url = websiteSettingsRepository.findBySettingsKey(
+        DEFAULT_SETTINGS_KEY).map(WebsiteSettings::getGuestOrderLink)
+        .orElse(null);
+    return new GuestOrderLinkResponse(url);
+  }
+
+  @Transactional
+  public GuestOrderLinkResponse updateGuestOrderLink(
+      GuestOrderLinkUpdateRequest request) {
+    WebsiteSettings settings = settings();
+    settings.setGuestOrderLink(request.url().trim());
+    return new GuestOrderLinkResponse(
+        websiteSettingsRepository.save(settings).getGuestOrderLink());
   }
 
   @Transactional

@@ -34,6 +34,8 @@ public class Order extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "customer_id")
   private User customer;
+  @Column(name = "guest_order", nullable = false)
+  private boolean guestOrder;
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assigned_delivery_user_id")
   private User assignedDeliveryUser;

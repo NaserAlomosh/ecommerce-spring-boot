@@ -13,7 +13,8 @@ public class OrderMapper {
         o.getCurrency(), o.getSubtotal(), o.getTotalAmount(), o.getTotalItems(),
         o.getCustomerNote(), o.getFailureReason(), failureKey(o),
         o.getFailureNote(), o.getCreatedAt(), o.getUpdatedAt(),
-        o.getCancelledAt(), o.getCompletedAt(), user(o.getCustomer()),
+        o.getCancelledAt(), o.getCompletedAt(), o.isGuestOrder(),
+        user(o.getCustomer()),
         user(o.getAssignedDeliveryUser()), address(o),
         o.getItems()
             .stream()
@@ -26,7 +27,8 @@ public class OrderMapper {
     return new OrderSummaryResponse(o.getOrderNumber(), o.getStatus(),
                                     statusKey(o.getStatus()), o.getCurrency(),
                                     o.getTotalAmount(), o.getTotalItems(),
-                                    o.getCity(), o.getCreatedAt());
+                                    o.getCity(), o.isGuestOrder(),
+                                    o.getCreatedAt());
   }
   public OrderItemResponse toItem(OrderItem i) {
     return new OrderItemResponse(

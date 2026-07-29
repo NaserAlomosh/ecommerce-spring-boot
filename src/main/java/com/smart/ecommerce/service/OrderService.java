@@ -1,6 +1,7 @@
 package com.smart.ecommerce.service;
 
 import com.smart.ecommerce.dto.PaginationResponse;
+import com.smart.ecommerce.dto.guest.GuestOrderDtos.GuestOrderRequest;
 import com.smart.ecommerce.dto.order.OrderDtos.*;
 import com.smart.ecommerce.entity.*;
 import com.smart.ecommerce.enums.*;
@@ -34,6 +35,22 @@ public class OrderService {
   private final OrderMapper mapper;
   @Transactional
   public OrderResponse createPublic(PublicOrderRequest r) {
+    return createPublic(r, false);
+  }
+
+  @Transactional
+  public OrderResponse createGuest(GuestOrderRequest r) {
+    PublicOrderRequest request = new PublicOrderRequest(
+        r.customerName(), r.phoneNumber(),
+        new PublicOrderLocationRequest("Guest location", r.latitude(),
+                                       r.longitude(), null, null,
+                                       normalize(r.address())),
+        r.items(), null);
+    return createPublic(request, true);
+  }
+
+  private OrderResponse createPublic(PublicOrderRequest r,
+                                     boolean guestOrder) {
     Map<Long, Integer> quantities = r.products().stream().collect(
         Collectors.toMap(PublicOrderItemRequest::productId,
                          PublicOrderItemRequest::quantity, Integer::sum));
@@ -46,6 +63,7 @@ public class OrderService {
     Order o = new Order();
     o.setOrderNumber(numbers.generate());
     o.setStatus(OrderStatus.PENDING);
+    o.setGuestOrder(guestOrder);
     o.setCustomerNote(r.customerNote());
     o.setRecipientName(r.name().trim());
     o.setPhoneNumber(r.phoneNumber().trim());
