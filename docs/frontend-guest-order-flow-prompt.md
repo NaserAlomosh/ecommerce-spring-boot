@@ -167,3 +167,15 @@ Future<BaseResponseModel<OrderModel>> createGuestOrder(
 Use the exact existing imports and conventions, including `ApiResult`, `SafeRequest.execute`, Freezed, injectable, `BaseCubit`, repository abstractions, and `result.when(success:, failure:)`. Do not call `ApiService` from widgets or Cubits.
 
 Add tests for local quantity changes, empty-cart Next validation, page navigation, request JSON excluding financial fields, form validation, submission success/failure, and double-submit prevention.
+
+## Important backend naming clarification
+
+Do **not** implement or call `AdminGuestOrderLinkController`,
+`GuestOrderLinkService`, `GuestLinkRequest`, `GuestLinkResponse`, or
+`GuestLinkStatusRequest`. Those types belong to the rejected multi-link design
+and intentionally do not exist.
+
+The single-link admin contract is implemented by `AdminWebsiteController` and
+uses only `GuestOrderLinkResponse` and `GuestOrderLinkUpdateRequest` from
+`WebsiteDtos`. The guest checkout request is `GuestOrderRequest` from
+`GuestOrderDtos`.
