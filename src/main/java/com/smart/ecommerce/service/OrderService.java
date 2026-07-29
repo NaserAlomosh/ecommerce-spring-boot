@@ -33,6 +33,8 @@ public class OrderService {
   private final OrderCalculationService calc;
   private final OrderStatusTransitionService transitions;
   private final OrderMapper mapper;
+  private final GuestOrderLinkService guestLinks;
+
   @Transactional
   public OrderResponse createPublic(PublicOrderRequest r) {
     return createPublic(r, false);

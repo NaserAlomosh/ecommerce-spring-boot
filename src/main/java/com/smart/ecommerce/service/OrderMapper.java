@@ -41,6 +41,9 @@ public class OrderMapper {
         h.getChangedByRole(), h.getNote(), h.getFailureReason(),
         h.getChangedAt());
   }
+  private String guestSlug(Order o) {
+    return o.getGuestOrderLink() == null ? null : o.getGuestOrderLink().getSlug();
+  }
   private OrderAddressResponse address(Order o) {
     return new OrderAddressResponse(o.getRecipientName(), o.getPhoneNumber(),
                                     o.getCity(), o.getLatitude(),
