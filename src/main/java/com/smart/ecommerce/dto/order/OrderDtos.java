@@ -13,7 +13,8 @@ public final class OrderDtos {
   public record CreateOrderRequest(@NotNull @Positive Long addressId,
                                    @Size(max = 1000) String customerNote) {}
   public record PublicOrderItemRequest(@NotNull @Positive Long productId,
-                                       @NotNull @Positive Integer quantity) {}
+                                       @NotNull @Min(1) @Max(999)
+                                       Integer quantity) {}
   public record PublicOrderLocationRequest(
       @NotBlank @Size(max = 100) String city,
       @NotNull @DecimalMin("-90.0") @DecimalMax("90.0") BigDecimal latitude,
@@ -24,7 +25,7 @@ public final class OrderDtos {
       @NotBlank @Size(max = 150) String name,
       @NotBlank @Pattern(regexp = "^\\+?[0-9]{8,15}$") String phoneNumber,
       @NotNull @Valid PublicOrderLocationRequest location,
-      @NotEmpty List<@Valid PublicOrderItemRequest> products,
+      @NotEmpty @Size(max = 100) List<@Valid PublicOrderItemRequest> products,
       @Size(max = 1000) String customerNote) {}
   public record CancelOrderRequest(@NotBlank @Size(max = 500) String reason) {}
   public record AssignDeliveryRequest(@NotNull @Positive Long deliveryUserId) {}
