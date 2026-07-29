@@ -59,6 +59,7 @@ public class SecurityConfig {
                                     "/api/v1/company",
                                     "/api/v1/social-sales-link",
                                     "/api/v1/social-sales-link/**",
+                                    "/api/v1/public/guest-links/**",
                                     "/v3/api-docs/**",
                                     "/swagger-ui/**", "/swagger-ui.html", "/uploads/**")
                    .permitAll()
