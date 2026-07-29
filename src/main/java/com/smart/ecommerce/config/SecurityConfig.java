@@ -56,8 +56,7 @@ public class SecurityConfig {
                    .permitAll()
                    .requestMatchers("/api/v1/auth/**", "/api/v1/login",
                                     "/api/v1/health", "/api/v1/contact/**",
-                                    "/api/v1/company",
-                                    "/api/v1/social-sales-link/**",
+                                    "/api/v1/company", "/api/v1/public/sales-links/**",
                                     "/v3/api-docs/**",
                                     "/swagger-ui/**", "/swagger-ui.html", "/uploads/**")
                    .permitAll()
