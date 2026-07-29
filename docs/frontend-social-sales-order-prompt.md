@@ -53,6 +53,17 @@ The response `data` is the existing full `OrderResponse`. Expect validation erro
 
 Delete UI, repository calls, use cases, state, and models that generate a unique social-media link for each sales employee. Never append an employee token or assume a backend cart/customer address exists in this public flow. Product listing continues to use `GET /api/v1/products`.
 
+The generated-link backend APIs were deleted and must not be called:
+
+- `POST /api/v1/employee/sales-links`
+- `GET /api/v1/public/sales-links/{token}/products`
+- `GET /api/v1/public/sales-links/{token}/products/{productId}`
+- `POST /api/v1/public/sales-links/{token}/orders`
+
+Remove any token parsing, expiry/inactive-link state, employee attribution,
+generated-link sharing UI, and old endpoint DTOs. The admin now shares the
+static `url` returned from the database-backed social-sales-link setting.
+
 ## Required navigation and screens
 
 Register the route named exactly `socialSealsLinkOrder`. Build the flow as one screen containing a non-user-scrollable two-page `PageView`, preserving page state:
