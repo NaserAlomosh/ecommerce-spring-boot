@@ -53,6 +53,16 @@ public class ProductService {
   }
 
   @Transactional(readOnly = true)
+  public PaginationResponse<ProductResponse>
+  listAvailable(Pageable pageable) {
+    return PaginationResponse.from(
+        productRepository
+            .findByActiveTrueAndDeletedFalseAndCategory_ActiveTrueAndStockQuantityGreaterThan(
+                0, pageable)
+            .map(this::toResponse));
+  }
+
+  @Transactional(readOnly = true)
   public ProductResponse getPublic(Long productId) {
     Product product =
         productRepository.findWithImagesById(productId)
