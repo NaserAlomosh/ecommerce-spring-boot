@@ -1,72 +1,62 @@
-# Flutter frontend implementation prompt: guest order flow
+# Flutter frontend prompt: simple guest order flow
 
-Implement the complete **Guest Order Links** admin feature and public guest checkout in the Flutter application. Follow the application's existing clean architecture and use the exact dependency direction and state style shown below: widget → Freezed `BaseCubit` → use case → repository abstraction → repository implementation → Retrofit `ApiService`. Use `SafeRequest.execute`, `ApiResult`, injectable, entities, request/response models, and generated JSON/Retrofit/Freezed code. Never call Retrofit directly from a widget or cubit.
+Implement a simple guest checkout page at the frontend route **`/guest-order`**. Do not add generated links, tokens, slugs, expiry, guest-link CRUD, authentication, or a backend cart.
 
-## Backend contract and response envelope
+## Flow
 
-Every successful endpoint returns:
+1. The backend stores one URL, for example `https://domain.com/guest-order`, in `website_settings.guest_order_link`.
+2. Admin reads that URL and copies/sends it to the customer.
+3. Opening the URL routes the customer to `/guest-order`.
+4. The page loads the existing public product list and keeps the cart only in Flutter state.
+5. The customer enters name, mobile number, and a Google Maps location.
+6. Flutter submits only customer/location values and `{productId, quantity}` entries. No login or token is required.
 
-```json
-{ "success": true, "message": "...", "data": {}, "timestamp": "2026-07-29T12:00:00Z" }
+## APIs
+
+All responses use the existing `BaseResponseModel<T>` envelope.
+
+### Stored link
+
+Public read (no token):
+
+```http
+GET /api/v1/guest-order-link
 ```
 
-Failures use the same envelope with `success: false`; `data` contains the existing `ApiError`, including field validation errors. These public APIs require **no Authorization header**, JWT, account, or server-side cart.
+Admin read/update (admin or sub-admin token):
 
-### Guest link models
+```http
+GET /api/v1/admin/website/guest-order-link
+PUT /api/v1/admin/website/guest-order-link
+Content-Type: application/json
 
-```json
-{
-  "id": 4,
-  "title": "Facebook summer offer",
-  "slug": "facebook-summer",
-  "active": true,
-  "createdAt": "2026-07-29T12:00:00Z",
-  "updatedAt": "2026-07-29T12:00:00Z"
-}
+{ "url": "https://domain.com/guest-order" }
 ```
 
-The shareable frontend route should be `/guest-order/{slug}`. Store/send only the slug to the APIs; the link never expires and can be reused until disabled.
-
-## Authenticated admin APIs
-
-All require an admin/sub-admin access token.
-
-- `GET /api/v1/admin/guest-links` — `data` is a JSON array of guest links.
-- `POST /api/v1/admin/guest-links` — creates a link (HTTP 201).
-- `PUT /api/v1/admin/guest-links/{id}` — updates title, slug, and active state.
-- `PATCH /api/v1/admin/guest-links/{id}/status` — enables/disables it.
-
-Create/update body:
+Response data:
 
 ```json
-{ "title": "Facebook summer offer", "slug": "facebook-summer", "active": true }
+{ "url": "https://domain.com/guest-order" }
 ```
 
-Status body:
+The admin UI only needs to display, copy, and optionally update this single stored URL. There is no list, create-link form, slug, enable/disable action, token, or expiry.
 
-```json
-{ "active": false }
+### Products
+
+Reuse the existing product repository, models, entity, and use case:
+
+```http
+GET /api/v1/products?page=0&size=20
 ```
 
-Slug validation is lowercase letters/numbers separated by single hyphens, e.g. `facebook`, `summer-offer`. Build an admin **Guest Order Links** screen with loading, empty, error, create/edit dialogs, enable/disable confirmation, and Copy/Share actions that compose `{publicWebBaseUrl}/guest-order/{slug}`. Refresh or update immutable cubit state after mutations.
+The existing endpoint returns active products. On the guest page show only products whose `inStock` value is true. Keep selected quantities in a local immutable Cubit list and never call customer cart APIs.
 
-## Public guest APIs and flow
+### Create guest order
 
-### 1. Resolve link
-
-`GET /api/v1/public/guest-links/{slug}`
-
-Call this first when `/guest-order/{slug}` opens. A missing link returns 404. A disabled link returns 400. Show a dedicated unavailable-link state and do not load products or permit checkout after either failure.
-
-### 2. Load only orderable products
-
-`GET /api/v1/public/guest-links/{slug}/products?page=0&size=20`
-
-The `data` is the existing `PaginationModel<ProductModel>`. The backend returns only active products in active categories with stock greater than zero. Support pagination using the current product model/entity; do not make a duplicate product representation. Do not call backend cart endpoints.
-
-### 3. Submit the order
-
-`POST /api/v1/public/guest-links/{slug}/orders` (HTTP 201)
+```http
+POST /api/v1/guest-order-link/orders
+Content-Type: application/json
+```
 
 ```json
 {
@@ -82,36 +72,27 @@ The `data` is the existing `PaginationModel<ProductModel>`. The backend returns 
 }
 ```
 
-`customerName`, `phoneNumber`, coordinates, and at least one item are required. `address` is optional. Phone must contain 8–15 digits with an optional leading `+`; latitude is -90..90 and longitude -180..180; each quantity is 1..999. Send each product once.
+`address` is optional; all other values are required. Each quantity must be positive. The response data is the existing `OrderModel`, with `guestOrder: true`.
 
-**Never send product names, images, prices, discounts, currency, subtotals, totals, or any other financial value.** Displayed cart totals are estimates only. The backend reloads and locks products, checks active/category/stock state, reads current prices, calculates totals, snapshots data, and decrements inventory atomically.
+Never send product name, price, discount, currency, subtotal, total, or any calculated financial value. The displayed local subtotal is only an estimate. The backend reloads products, validates active status and stock, reads current prices, calculates totals, and decreases stock transactionally.
 
-The response `data` is the existing `OrderModel`, extended with:
+## UI
 
-```json
-{ "guestOrder": true, "guestLinkSlug": "facebook-summer" }
-```
+Build one guest-order screen with a non-scrollable two-page `PageView`:
 
-Preserve all existing order fields. On success show the server order number and server-calculated total, then clear local state. On stock/product validation failure keep the form/cart, show the backend error, and allow products to refresh. Disable Submit while a request is running and prevent double submission.
+1. Products and local cart: use `ListProductsUsecase`, add/increment/decrement/remove locally, show selected lines and estimated subtotal, and reject Next when empty.
+2. Form: required name, required mobile, and required Google Maps coordinates; optional formatted address. Back preserves the cart. Submit is disabled while running. On success show the server order number/total and then clear local state.
 
-## Required public screen behavior
+The page is public and must never redirect to login. Do not attach an Authorization header for the stored-link read or order POST.
 
-Use one screen with a non-user-scrollable two-page `PageView` that preserves state:
+## Required architecture
 
-1. **Products/local cart:** resolve link, page through products, display image/localized name/effective price/currency/current stock, and maintain local quantities with add/increment/decrement/remove. Show selected lines and estimated subtotal. Next must reject an empty cart.
-2. **Customer/location form:** required name and phone; choose a Google Maps point returning latitude/longitude and optional formatted address. Back returns to products without losing state. Submit maps local items strictly to `{productId, quantity}`.
-
-The system/app-bar back action returns from page two to page one; from page one it closes the guest route. Handle loading, retry, disabled/not-found link, empty products, validation, submitting, API error, and success states. Do not require or redirect to login.
-
-## Required project structure and style
-
-Use the project's equivalents of these layers and preserve this pattern:
+Follow the existing Flutter layers exactly:
 
 ```dart
 @freezed
 abstract class GuestOrderState with _$GuestOrderState {
   const factory GuestOrderState({
-    GuestLinkEntity? link,
     @Default(<ProductEntity>[]) List<ProductEntity> products,
     @Default(<LocalGuestOrderItem>[]) List<LocalGuestOrderItem> selectedItems,
     @Default(0) int pageIndex,
@@ -125,23 +106,27 @@ abstract class GuestOrderState with _$GuestOrderState {
 @injectable
 class GuestOrderCubit extends BaseCubit<GuestOrderState> {
   GuestOrderCubit(
-    this._getGuestLinkUsecase,
-    this._listGuestProductsUsecase,
+    this._listProductsUsecase,
     this._createGuestOrderUsecase,
   ) : super(const GuestOrderState());
 
-  final GetGuestLinkUsecase _getGuestLinkUsecase;
-  final ListGuestProductsUsecase _listGuestProductsUsecase;
+  final ListProductsUsecase _listProductsUsecase;
   final CreateGuestOrderUsecase _createGuestOrderUsecase;
 
-  Future<void> load(String slug) async {
+  @override
+  Future init() => loadProducts();
+
+  Future<void> loadProducts() async {
     emit(state.copyWith(isLoading: true, errorMessage: null), closeLoading: false);
-    final result = await _getGuestLinkUsecase(slug);
+    final result = await _listProductsUsecase(const ListProductsParams());
     result.when(
-      success: (link) => _loadProductsAfterLink(link),
+      success: (page) => emit(state.copyWith(
+        products: page.content.where((product) => product.inStock).toList(),
+        isLoading: false,
+      )),
       failure: (error) => emit(state.copyWith(
         isLoading: false,
-        errorMessage: error.error?.toString() ?? 'Guest link is unavailable',
+        errorMessage: error.error?.toString() ?? 'Unable to load products',
       )),
     );
   }
@@ -164,31 +149,21 @@ class GuestOrderRepositoryImpl implements GuestOrderRepository {
   @override
   Future<ApiResult<OrderEntity>> createOrder(CreateGuestOrderParams params) async {
     final result = await SafeRequest.execute<OrderModel>(
-      () => _apiService.createGuestOrder(params.slug, params.toRequestModel()),
+      () => _apiService.createGuestOrder(params.toRequestModel()),
     );
     return result.map((model) => model.toEntity());
   }
 }
 
-@GET('/api/v1/public/guest-links/{slug}')
-Future<BaseResponseModel<GuestLinkModel>> guestLink(@Path('slug') String slug);
+@GET('/api/v1/guest-order-link')
+Future<BaseResponseModel<GuestOrderLinkModel>> guestOrderLink();
 
-@GET('/api/v1/public/guest-links/{slug}/products')
-Future<BaseResponseModel<PaginationModel<ProductModel>>> guestProducts(
-  @Path('slug') String slug,
-  @Query('page') int page,
-  @Query('size') int size,
-);
-
-@POST('/api/v1/public/guest-links/{slug}/orders')
+@POST('/api/v1/guest-order-link/orders')
 Future<BaseResponseModel<OrderModel>> createGuestOrder(
-  @Path('slug') String slug,
   @Body() GuestOrderRequestModel request,
 );
 ```
 
-Use the exact existing imports in this codebase, including `api_result.dart`, `BaseCubit`, existing product/order entities, Freezed annotations, and injectable. Adapt only generic mapping syntax to the current helpers.
+Use the exact existing imports and conventions, including `ApiResult`, `SafeRequest.execute`, Freezed, injectable, `BaseCubit`, repository abstractions, and `result.when(success:, failure:)`. Do not call `ApiService` from widgets or Cubits.
 
-## Tests
-
-Add cubit/use-case/repository/model tests for link resolution, unavailable/disabled link, pagination, local quantity bounds, empty-cart prevention, navigation/state preservation, request JSON excluding all financial fields, success/failure, and double-submit prevention. Add widget tests for admin CRUD states, both guest pages, Google Maps selection handoff, form validation, back behavior, and success UI.
+Add tests for local quantity changes, empty-cart Next validation, page navigation, request JSON excluding financial fields, form validation, submission success/failure, and double-submit prevention.

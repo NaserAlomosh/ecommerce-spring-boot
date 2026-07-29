@@ -52,15 +52,14 @@ public final class OrderDtos {
                 String failureReasonDescriptionKey, String failureNote,
                 Instant createdAt, Instant updatedAt, Instant cancelledAt,
                 Instant completedAt, boolean guestOrder,
-                String guestLinkSlug, OrderUserResponse customer,
+                OrderUserResponse customer,
                 OrderUserResponse assignedDeliveryUser,
                 OrderAddressResponse address, List<OrderItemResponse> items) {}
   public record OrderSummaryResponse(String orderNumber, OrderStatus status,
                                      String statusDescriptionKey,
                                      String currency, BigDecimal totalAmount,
                                      Integer totalItems, String city,
-                                     boolean guestOrder, String guestLinkSlug,
-                                     Instant createdAt) {}
+                                     boolean guestOrder, Instant createdAt) {}
   public record OrderStatusHistoryResponse(OrderStatus previousStatus,
                                            OrderStatus newStatus,
                                            Long changedByUserId,

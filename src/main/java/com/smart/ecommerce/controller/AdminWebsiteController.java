@@ -5,6 +5,8 @@ import com.smart.ecommerce.dto.website.WebsiteDtos.CompanyResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.CompanyUpdateRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.ContactUpdateRequest;
+import com.smart.ecommerce.dto.website.WebsiteDtos.GuestOrderLinkResponse;
+import com.smart.ecommerce.dto.website.WebsiteDtos.GuestOrderLinkUpdateRequest;
 import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkResponse;
 import com.smart.ecommerce.dto.website.WebsiteDtos.SocialSalesLinkUpdateRequest;
 import com.smart.ecommerce.service.WebsiteService;
@@ -12,6 +14,7 @@ import com.smart.ecommerce.util.MessageUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -44,6 +47,21 @@ public class AdminWebsiteController {
   updateContact(@Valid @RequestBody ContactUpdateRequest request) {
     return ApiResponse.success(messages.getMessage("admin.contact_updated"),
                                websiteService.updateContact(request));
+  }
+
+  @GetMapping("/guest-order-link")
+  public ApiResponse<GuestOrderLinkResponse> guestOrderLink() {
+    return ApiResponse.success(
+        messages.getMessage("guest_order_link.loaded"),
+        websiteService.guestOrderLink());
+  }
+
+  @PutMapping("/guest-order-link")
+  public ApiResponse<GuestOrderLinkResponse> updateGuestOrderLink(
+      @Valid @RequestBody GuestOrderLinkUpdateRequest request) {
+    return ApiResponse.success(
+        messages.getMessage("admin.guest_order_link_updated"),
+        websiteService.updateGuestOrderLink(request));
   }
 
   @PutMapping("/social-sales-link")

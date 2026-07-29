@@ -37,9 +37,6 @@ public class Order extends BaseEntity {
   @Column(name = "guest_order", nullable = false)
   private boolean guestOrder;
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "guest_order_link_id")
-  private GuestOrderLink guestOrderLink;
-  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "assigned_delivery_user_id")
   private User assignedDeliveryUser;
   @Enumerated(EnumType.STRING)

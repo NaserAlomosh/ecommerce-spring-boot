@@ -2,7 +2,7 @@ package com.smart.ecommerce.dto.guest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.smart.ecommerce.dto.guest.GuestOrderDtos.*;
+import com.smart.ecommerce.dto.guest.GuestOrderDtos.GuestOrderRequest;
 import com.smart.ecommerce.dto.order.OrderDtos.PublicOrderItemRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -15,10 +15,10 @@ class GuestOrderDtosValidationTest {
       Validation.buildDefaultValidatorFactory().getValidator();
 
   @Test
-  void acceptsMinimumGuestOrderAndRejectsClientFinancialFieldsByDesign() {
+  void acceptsOnlyMinimumGuestOrderFields() {
     GuestOrderRequest request = new GuestOrderRequest(
         "Guest", "+962790000000", new BigDecimal("31.95"),
-        new BigDecimal("35.91"), null,
+        new BigDecimal("35.91"), "Amman",
         List.of(new PublicOrderItemRequest(5L, 2)));
 
     assertThat(validator.validate(request)).isEmpty();
@@ -29,14 +29,11 @@ class GuestOrderDtosValidationTest {
   }
 
   @Test
-  void rejectsInvalidSlugAndEmptyItems() {
-    GuestLinkRequest link =
-        new GuestLinkRequest("Facebook", "Facebook Link", true);
+  void rejectsInvalidCustomerAndEmptyItems() {
     GuestOrderRequest order = new GuestOrderRequest(
         "", "123", new BigDecimal("91"), new BigDecimal("181"), null,
         List.of());
 
-    assertThat(validator.validate(link)).isNotEmpty();
     assertThat(validator.validate(order)).hasSizeGreaterThanOrEqualTo(5);
   }
 }

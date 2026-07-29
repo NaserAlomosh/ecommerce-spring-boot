@@ -37,23 +37,22 @@ public class OrderService {
 
   @Transactional
   public OrderResponse createPublic(PublicOrderRequest r) {
-    return createPublic(r, null);
+    return createPublic(r, false);
   }
 
   @Transactional
-  public OrderResponse createGuest(String slug, GuestOrderRequest r) {
-    GuestOrderLink link = guestLinks.requireActive(slug);
+  public OrderResponse createGuest(GuestOrderRequest r) {
     PublicOrderRequest request = new PublicOrderRequest(
         r.customerName(), r.phoneNumber(),
         new PublicOrderLocationRequest("Guest location", r.latitude(),
                                        r.longitude(), null, null,
                                        normalize(r.address())),
         r.items(), null);
-    return createPublic(request, link);
+    return createPublic(request, true);
   }
 
   private OrderResponse createPublic(PublicOrderRequest r,
-                                     GuestOrderLink guestLink) {
+                                     boolean guestOrder) {
     Map<Long, Integer> quantities = r.products().stream().collect(
         Collectors.toMap(PublicOrderItemRequest::productId,
                          PublicOrderItemRequest::quantity, Integer::sum));
@@ -66,8 +65,7 @@ public class OrderService {
     Order o = new Order();
     o.setOrderNumber(numbers.generate());
     o.setStatus(OrderStatus.PENDING);
-    o.setGuestOrder(guestLink != null);
-    o.setGuestOrderLink(guestLink);
+    o.setGuestOrder(guestOrder);
     o.setCustomerNote(r.customerNote());
     o.setRecipientName(r.name().trim());
     o.setPhoneNumber(r.phoneNumber().trim());

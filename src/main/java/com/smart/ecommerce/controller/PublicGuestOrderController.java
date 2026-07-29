@@ -1,43 +1,41 @@
 package com.smart.ecommerce.controller;
 
-import com.smart.ecommerce.dto.*;
-import com.smart.ecommerce.dto.guest.GuestOrderDtos.*;
+import com.smart.ecommerce.dto.ApiResponse;
+import com.smart.ecommerce.dto.guest.GuestOrderDtos.GuestOrderRequest;
 import com.smart.ecommerce.dto.order.OrderDtos.OrderResponse;
-import com.smart.ecommerce.dto.product.ProductDtos.ProductResponse;
-import com.smart.ecommerce.service.*;
+import com.smart.ecommerce.dto.website.WebsiteDtos.GuestOrderLinkResponse;
+import com.smart.ecommerce.service.OrderService;
+import com.smart.ecommerce.service.WebsiteService;
 import com.smart.ecommerce.util.MessageUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/public/guest-links")
+@RequestMapping("/api/v1/guest-order-link")
 public class PublicGuestOrderController {
-  private final GuestOrderLinkService links;
-  private final ProductService products;
-  private final OrderService orders;
+  private final WebsiteService websiteService;
+  private final OrderService orderService;
   private final MessageUtil messages;
 
-  @GetMapping("/{slug}")
-  public ApiResponse<GuestLinkResponse> link(@PathVariable String slug) {
-    return ApiResponse.success(messages.getMessage("guest_link.loaded"),
-                               links.getActive(slug));
+  @GetMapping
+  public ApiResponse<GuestOrderLinkResponse> link() {
+    return ApiResponse.success(messages.getMessage("guest_order_link.loaded"),
+                               websiteService.guestOrderLink());
   }
-  @GetMapping("/{slug}/products")
-  public ApiResponse<PaginationResponse<ProductResponse>> products(
-      @PathVariable String slug, Pageable pageable) {
-    links.requireActive(slug);
-    return ApiResponse.success(messages.getMessage("products"),
-                               products.listAvailable(pageable));
-  }
-  @PostMapping("/{slug}/orders")
+
+  @PostMapping("/orders")
   @ResponseStatus(HttpStatus.CREATED)
-  public ApiResponse<OrderResponse> create(
-      @PathVariable String slug, @Valid @RequestBody GuestOrderRequest request) {
+  public ApiResponse<OrderResponse> createOrder(
+      @Valid @RequestBody GuestOrderRequest request) {
     return ApiResponse.success(messages.getMessage("order.created"),
-                               orders.createGuest(slug, request));
+                               orderService.createGuest(request));
   }
 }

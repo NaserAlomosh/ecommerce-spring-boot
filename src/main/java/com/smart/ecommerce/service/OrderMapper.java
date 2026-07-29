@@ -14,7 +14,7 @@ public class OrderMapper {
         o.getCustomerNote(), o.getFailureReason(), failureKey(o),
         o.getFailureNote(), o.getCreatedAt(), o.getUpdatedAt(),
         o.getCancelledAt(), o.getCompletedAt(), o.isGuestOrder(),
-        guestSlug(o), user(o.getCustomer()),
+        user(o.getCustomer()),
         user(o.getAssignedDeliveryUser()), address(o),
         o.getItems()
             .stream()
@@ -28,7 +28,7 @@ public class OrderMapper {
                                     statusKey(o.getStatus()), o.getCurrency(),
                                     o.getTotalAmount(), o.getTotalItems(),
                                     o.getCity(), o.isGuestOrder(),
-                                    guestSlug(o), o.getCreatedAt());
+                                    o.getCreatedAt());
   }
   public OrderItemResponse toItem(OrderItem i) {
     return new OrderItemResponse(
