@@ -159,6 +159,9 @@ public class AuthService {
                      nu.setEmailVerified(true);
                      return users.save(nu);
                    });
+    System.out.println("Email: " + u.getEmail());
+    System.out.println("Role: " + u.getRole());
+    System.out.println("Status: " + u.getStatus());
     if (u.getRole() != Role.CUSTOMER || u.getStatus() != UserStatus.ACTIVE)
       throw new BadCredentialsException("error.social_login_unavailable");
     if (acc == null) {

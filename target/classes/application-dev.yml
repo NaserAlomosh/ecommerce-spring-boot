@@ -5,3 +5,7 @@ spring:
     password: ${MYSQL_PASSWORD:ecommerce_password}
   jpa:
     show-sql: true
+
+app:
+  flyway:
+    repair-v19-checksum: ${FLYWAY_REPAIR_V19_CHECKSUM:true}
