@@ -25,6 +25,15 @@ public final class WebsiteDtos {
   public record SocialSalesLinkUpdateRequest(
       @NotBlank @Size(max = 1000) String url) {}
 
+  public record GuestOrderLinkResponse(String url) {}
+
+  public record GuestOrderLinkUpdateRequest(
+      @NotBlank @Size(max = 1000)
+      @jakarta.validation.constraints.Pattern(
+          regexp = "^https?://.+/guest-order/?$",
+          message = "must be a full URL ending with /guest-order")
+      String url) {}
+
   public record CompanyUpdateRequest(
       @NotBlank @Size(max = 200) String name,
       @Size(max = 2000) String descriptionEn,
