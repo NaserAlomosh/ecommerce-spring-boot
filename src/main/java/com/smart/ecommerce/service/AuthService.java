@@ -1,0 +1,225 @@
+package com.smart.ecommerce.service;
+import com.smart.ecommerce.config.*;
+import com.smart.ecommerce.dto.auth.AuthDtos.*;
+import com.smart.ecommerce.dto.user.UserDtos.UserResponse;
+import com.smart.ecommerce.entity.*;
+import com.smart.ecommerce.enums.*;
+import com.smart.ecommerce.repository.*;
+import com.smart.ecommerce.security.*;
+import jakarta.transaction.Transactional;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+  private final UserRepository users;
+  private final RefreshTokenRepository refreshTokens;
+  private final EmailOtpRepository otps;
+  private final PasswordResetTokenRepository resetTokens;
+  private final SocialAccountRepository socials;
+  private final PasswordEncoder encoder;
+  private final JwtService jwt;
+  private final AuthProperties props;
+  private final EmailService emailService;
+  private final TokenHashService hasher;
+  private final UserMapper mapper;
+  private final SocialTokenVerifier socialTokenVerifier;
+  private final SecureRandom random = new SecureRandom();
+  @Transactional
+  public UserResponse register(RegisterRequest r) {
+    String email = norm(r.email());
+    checkUnique(email, r.phoneNumber());
+    User u = new User();
+    u.setFirstName(r.firstName());
+    u.setLastName(r.lastName());
+    u.setEmail(email);
+    u.setPhoneNumber(r.phoneNumber());
+    u.setPasswordHash(encoder.encode(r.password()));
+    u.setRole(Role.CUSTOMER);
+    u.setStatus(UserStatus.PENDING);
+    u = users.save(u);
+    sendOtp(u, OtpPurpose.EMAIL_VERIFICATION);
+    return mapper.toResponse(u);
+  }
+  @Transactional
+  public TokenResponse login(LoginRequest r, String ip) {
+    User u =
+        users.findByEmail(norm(r.email()))
+            .orElseThrow(
+                () -> new BadCredentialsException("error.invalid_credentials"));
+    if (!encoder.matches(r.password(), u.getPasswordHash()))
+      throw new BadCredentialsException("error.invalid_credentials");
+    if (u.getStatus() != UserStatus.ACTIVE)
+      throw new BadCredentialsException("error.user_not_active");
+    u.setLastLoginAt(Instant.now());
+    return issue(u, ip);
+  }
+  @Transactional
+  public TokenResponse refresh(RefreshRequest r, String ip) {
+    RefreshToken old =
+        refreshTokens.findByTokenHash(hasher.sha256(r.refreshToken()))
+            .orElseThrow(()
+                             -> new BadCredentialsException(
+                                 "error.invalid_refresh_token"));
+    if (!old.active()) {
+      if (old.getRevokedAt() != null)
+        refreshTokens.revokeAll(old.getUser(), Instant.now());
+      throw new BadCredentialsException("error.invalid_refresh_token");
+    }
+    old.setRevokedAt(Instant.now());
+    old.setRevokedByIp(ip);
+    TokenResponse tr = issue(old.getUser(), ip);
+    RefreshToken repl =
+        refreshTokens.findByTokenHash(hasher.sha256(tr.refreshToken()))
+            .orElseThrow();
+    old.setReplacedByToken(repl);
+    return tr;
+  }
+  @Transactional
+  public void logout(LogoutRequest r, String ip) {
+    refreshTokens.findByTokenHash(hasher.sha256(r.refreshToken()))
+        .ifPresent(t -> {
+          t.setRevokedAt(Instant.now());
+          t.setRevokedByIp(ip);
+        });
+  }
+  @Transactional
+  public void verifyEmail(EmailOtpRequest r) {
+    User u = users.findByEmail(norm(r.email()))
+                 .orElseThrow(
+                     () -> new BadCredentialsException("error.invalid_otp"));
+    verifyOtp(u, OtpPurpose.EMAIL_VERIFICATION, r.otp());
+    u.setEmailVerified(true);
+    u.setStatus(UserStatus.ACTIVE);
+  }
+  @Transactional
+  public void resendEmailOtp(EmailRequest r) {
+    users.findByEmail(norm(r.email()))
+        .filter(u -> !u.isEmailVerified())
+        .ifPresent(u -> sendOtp(u, OtpPurpose.EMAIL_VERIFICATION));
+  }
+  @Transactional
+  public void forgotPassword(EmailRequest r) {
+    users.findByEmail(norm(r.email()))
+        .ifPresent(u -> sendOtp(u, OtpPurpose.PASSWORD_RESET));
+  }
+  @Transactional
+  public ResetOtpResponse verifyPasswordResetOtp(EmailOtpRequest r) {
+    User u = users.findByEmail(norm(r.email()))
+                 .orElseThrow(
+                     () -> new BadCredentialsException("error.invalid_otp"));
+    verifyOtp(u, OtpPurpose.PASSWORD_RESET, r.otp());
+    String raw = UUID.randomUUID() + UUID.randomUUID().toString();
+    PasswordResetToken t = new PasswordResetToken();
+    t.setUser(u);
+    t.setTokenHash(hasher.sha256(raw));
+    t.setExpiresAt(Instant.now().plus(props.passwordResetTokenExpiration()));
+    resetTokens.save(t);
+    return new ResetOtpResponse(raw);
+  }
+  @Transactional
+  public void resetPassword(ResetPasswordRequest r) {
+    PasswordResetToken t =
+        resetTokens.findByTokenHash(hasher.sha256(r.resetToken()))
+            .orElseThrow(
+                () -> new BadCredentialsException("error.invalid_reset_token"));
+    if (!t.usable())
+      throw new BadCredentialsException("error.invalid_reset_token");
+    t.setConsumedAt(Instant.now());
+    t.getUser().setPasswordHash(encoder.encode(r.newPassword()));
+    refreshTokens.revokeAll(t.getUser(), Instant.now());
+  }
+  @Transactional
+  public TokenResponse social(SocialLoginRequest r, String ip) {
+    SocialTokenVerifier.VerifiedSocialClaims c =
+        socialTokenVerifier.verify(r.identityToken(), r.provider(), r.nonce());
+    if (!c.emailVerified())
+      throw new BadCredentialsException("error.provider_email_unverified");
+    SocialAccount acc =
+        socials.findByProviderAndProviderUserId(r.provider(), c.subject())
+            .orElse(null);
+    User u = acc != null
+                 ? acc.getUser()
+                 : users.findByEmail(norm(c.email())).orElseGet(() -> {
+                     User nu = new User();
+                     nu.setEmail(norm(c.email()));
+                     nu.setFirstName(c.firstName());
+                     nu.setLastName(c.lastName());
+                     nu.setPhoneNumber(
+                         "+100000" + (Math.abs(c.subject().hashCode()) % 1000000000));
+                     nu.setPasswordHash(
+                         encoder.encode(UUID.randomUUID().toString()));
+                     nu.setRole(Role.CUSTOMER);
+                     nu.setStatus(UserStatus.ACTIVE);
+                     nu.setEmailVerified(true);
+                     return users.save(nu);
+                   });
+    System.out.println("Email: " + u.getEmail());
+    System.out.println("Role: " + u.getRole());
+    System.out.println("Status: " + u.getStatus());
+    if (u.getRole() != Role.CUSTOMER || u.getStatus() != UserStatus.ACTIVE)
+      throw new BadCredentialsException("error.social_login_unavailable");
+    if (acc == null) {
+      acc = new SocialAccount();
+      acc.setProvider(r.provider());
+      acc.setProviderUserId(c.subject());
+      acc.setProviderEmail(norm(c.email()));
+      acc.setUser(u);
+      socials.save(acc);
+    }
+    acc.setLastLoginAt(Instant.now());
+    u.setLastLoginAt(Instant.now());
+    return issue(u, ip);
+  }
+  private void sendOtp(User u, OtpPurpose p) {
+    otps.invalidate(u, p, Instant.now());
+    String raw = "%06d".formatted(random.nextInt(1_000_000));
+    EmailOtp o = new EmailOtp();
+    o.setUser(u);
+    o.setEmail(u.getEmail());
+    o.setPurpose(p);
+    o.setOtpHash(encoder.encode(raw));
+    o.setExpiresAt(Instant.now().plus(props.otpExpiration()));
+    o.setMaxAttempts(props.otpMaxAttempts());
+    o.setResendAvailableAt(Instant.now().plus(props.otpResendCooldown()));
+    otps.save(o);
+    if (p == OtpPurpose.EMAIL_VERIFICATION)
+      emailService.sendEmailVerificationOtp(u.getEmail(), u.getFirstName(),
+                                            raw);
+    else
+      emailService.sendPasswordResetOtp(u.getEmail(), u.getFirstName(), raw);
+  }
+  private void verifyOtp(User u, OtpPurpose p, String raw) {
+    EmailOtp o =
+        otps.findFirstByUserAndPurposeAndConsumedAtIsNullOrderByCreatedAtDesc(u,
+                                                                              p)
+            .orElseThrow(
+                () -> new BadCredentialsException("error.invalid_otp"));
+    o.setAttemptCount(o.getAttemptCount() + 1);
+    if (!o.usable() || !encoder.matches(raw, o.getOtpHash()))
+      throw new BadCredentialsException("error.invalid_otp");
+    o.setConsumedAt(Instant.now());
+  }
+  private TokenResponse issue(User u, String ip) {
+    String rt = UUID.randomUUID() + UUID.randomUUID().toString();
+    RefreshToken t = new RefreshToken();
+    t.setUser(u);
+    t.setTokenHash(hasher.sha256(rt));
+    t.setExpiresAt(Instant.now().plus(props.refreshTokenExpiration()));
+    t.setCreatedByIp(ip);
+    refreshTokens.save(t);
+    return new TokenResponse(jwt.generateToken(u), rt, jwt.expirationMillis(), u.getRole());
+  }
+  private void checkUnique(String e, String p) {
+    if (users.existsByEmail(e) || users.existsByPhoneNumber(p))
+      throw new IllegalArgumentException("error.email_or_phone_exists");
+  }
+  private String norm(String e) {
+    return e == null ? null : e.trim().toLowerCase();
+  }
+}

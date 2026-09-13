@@ -1,0 +1,195 @@
+package com.smart.ecommerce.report.controller;
+import com.smart.ecommerce.dto.*;
+import com.smart.ecommerce.report.dto.CustomerReviewReportDtos.*;
+import com.smart.ecommerce.report.dto.ReportDtos.ExportedReport;
+import com.smart.ecommerce.report.service.*;
+import com.smart.ecommerce.report.util.*;
+import com.smart.ecommerce.util.MessageUtil;
+import io.swagger.v3.oas.annotations.*;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDate;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.domain.*;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/admin/reports")
+@Tag(name = "Admin Customer & Review Reports")
+@SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasRole('ADMIN')")
+public class CustomerReviewReportController {
+  private final CustomerReviewReportService service;
+  private final ReportExportService export;
+  private final MessageUtil msg;
+  @GetMapping("/customers/summary")
+  @Operation(summary = "Customer summary; revenue uses COMPLETED orders only")
+  public ApiResponse<CustomerSummaryResponse>
+  customerSummary(@RequestParam(required = false) Boolean active) {
+    return ok(service.customerSummary(active));
+  }
+  @GetMapping("/customers/top")
+  public ApiResponse<List<TopCustomerResponse>>
+  topCustomers(@RequestParam(defaultValue = "TODAY") ReportPeriod period,
+               @RequestParam(required = false) LocalDate dateFrom,
+               @RequestParam(required = false) LocalDate dateTo,
+               @RequestParam(defaultValue = "10") Integer limit,
+               @RequestParam(defaultValue = "totalSpent") String sort,
+               @RequestParam(required = false) String customerName,
+               @RequestParam(required = false) Boolean active) {
+    return ok(service.top(period, dateFrom, dateTo, limit, sort, customerName,
+                          active));
+  }
+  @GetMapping("/customers/{customerId}/history")
+  public ApiResponse<CustomerPurchaseHistoryResponse>
+  history(@PathVariable Long customerId,
+          @RequestParam(defaultValue = "CUSTOM") ReportPeriod period,
+          @RequestParam(required = false) LocalDate dateFrom,
+          @RequestParam(required = false) LocalDate dateTo, Pageable pageable) {
+    return ok(service.history(customerId, period, dateFrom, dateTo, pageable));
+  }
+  @GetMapping("/customers/trend")
+  public ApiResponse<CustomerTrendResponse> customerTrend(
+      @RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+      @RequestParam(required = false) LocalDate dateFrom,
+      @RequestParam(required = false) LocalDate dateTo,
+      @RequestParam(defaultValue = "DAY") ReportGranularity granularity) {
+    return ok(service.customerTrend(period, dateFrom, dateTo, granularity));
+  }
+  @GetMapping("/reviews/summary")
+  public ApiResponse<ReviewsSummaryResponse>
+  reviewsSummary(@RequestParam(required = false) Integer rating) {
+    return ok(service.reviewsSummary(rating));
+  }
+  @GetMapping("/reviews/trend")
+  public ApiResponse<ReviewTrendResponse> reviewTrend(
+      @RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+      @RequestParam(required = false) LocalDate dateFrom,
+      @RequestParam(required = false) LocalDate dateTo,
+      @RequestParam(defaultValue = "DAY") ReportGranularity granularity) {
+    return ok(service.reviewTrend(period, dateFrom, dateTo, granularity));
+  }
+  @GetMapping("/reviews/top-products")
+  public ApiResponse<List<RatedProductResponse>>
+  topRated(@RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+           @RequestParam(required = false) LocalDate dateFrom,
+           @RequestParam(required = false) LocalDate dateTo,
+           @RequestParam(defaultValue = "10") Integer limit,
+           @RequestParam(required = false) String productName) {
+    return ok(
+        service.rated(period, dateFrom, dateTo, limit, productName, false));
+  }
+  @GetMapping("/reviews/lowest-products")
+  public ApiResponse<List<RatedProductResponse>>
+  lowest(@RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+         @RequestParam(required = false) LocalDate dateFrom,
+         @RequestParam(required = false) LocalDate dateTo,
+         @RequestParam(defaultValue = "10") Integer limit,
+         @RequestParam(required = false) String productName) {
+    return ok(
+        service.rated(period, dateFrom, dateTo, limit, productName, true));
+  }
+  @GetMapping("/reviews/no-reviews")
+  public ApiResponse<PaginationResponse<ProductNoReviewsResponse>>
+  noReviews(@RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String productName,
+            Pageable pageable) {
+    return ok(service.noReviews(categoryId, productName, pageable));
+  }
+  @GetMapping("/reviews/most-reviewed")
+  public ApiResponse<PaginationResponse<MostReviewedProductResponse>>
+  most(@RequestParam(required = false) String productName, Pageable pageable) {
+    return ok(service.most(productName, pageable));
+  }
+  @GetMapping(value = "/customers/summary/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  customerSummaryPdf() {
+    return pdf(export.customerSummaryPdf(loc()));
+  }
+  @GetMapping(value = "/customers/top/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  topCustomersPdf(@RequestParam(defaultValue = "TODAY") ReportPeriod period,
+                  @RequestParam(required = false) LocalDate dateFrom,
+                  @RequestParam(required = false) LocalDate dateTo,
+                  @RequestParam(defaultValue = "100") Integer limit,
+                  @RequestParam(defaultValue = "totalSpent") String sort,
+                  @RequestParam(required = false) String customerName,
+                  @RequestParam(required = false) Boolean active) {
+    return pdf(export.topCustomersPdf(period, dateFrom, dateTo, limit, sort,
+                                      customerName, active, loc()));
+  }
+  @GetMapping(value = "/customers/{customerId}/history/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  historyPdf(@PathVariable Long customerId,
+             @RequestParam(defaultValue = "CUSTOM") ReportPeriod period,
+             @RequestParam(required = false) LocalDate dateFrom,
+             @RequestParam(required = false) LocalDate dateTo,
+             Pageable pageable) {
+    return pdf(export.customerHistoryPdf(customerId, period, dateFrom, dateTo,
+                                         pageable, loc()));
+  }
+  @GetMapping(value = "/reviews/summary/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  reviewsSummaryPdf() {
+    return pdf(export.reviewsSummaryPdf(loc()));
+  }
+  @GetMapping(value = "/reviews/top-products/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  topRatedPdf(@RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+              @RequestParam(required = false) LocalDate dateFrom,
+              @RequestParam(required = false) LocalDate dateTo,
+              @RequestParam(defaultValue = "100") Integer limit,
+              @RequestParam(required = false) String productName) {
+    return pdf(export.ratedProductsPdf(period, dateFrom, dateTo, limit,
+                                       productName, false, loc()));
+  }
+  @GetMapping(value = "/reviews/lowest-products/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  lowestPdf(@RequestParam(defaultValue = "THIS_MONTH") ReportPeriod period,
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo,
+            @RequestParam(defaultValue = "100") Integer limit,
+            @RequestParam(required = false) String productName) {
+    return pdf(export.ratedProductsPdf(period, dateFrom, dateTo, limit,
+                                       productName, true, loc()));
+  }
+  @GetMapping(value = "/reviews/most-reviewed/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  mostPdf(@RequestParam(required = false) String productName,
+          Pageable pageable) {
+    return pdf(export.mostReviewedPdf(productName, pageable, loc()));
+  }
+  @GetMapping(value = "/reviews/no-reviews/export/pdf",
+              produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<ByteArrayResource>
+  noReviewsPdf(@RequestParam(required = false) Long categoryId,
+               @RequestParam(required = false) String productName,
+               Pageable pageable) {
+    return pdf(export.noReviewsPdf(categoryId, productName, pageable, loc()));
+  }
+  private <T> ApiResponse<T> ok(T d) {
+    return ApiResponse.success(msg.getMessage("report.loaded"), d);
+  }
+  private Locale loc() { return LocaleContextHolder.getLocale(); }
+  private ResponseEntity<ByteArrayResource> pdf(ExportedReport r) {
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_PDF)
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + r.filename() + "\"")
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .contentLength(r.content().length)
+        .body(new ByteArrayResource(r.content()));
+  }
+}

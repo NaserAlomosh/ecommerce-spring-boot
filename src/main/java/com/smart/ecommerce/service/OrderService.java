@@ -1,0 +1,423 @@
+package com.smart.ecommerce.service;
+
+import com.smart.ecommerce.dto.PaginationResponse;
+import com.smart.ecommerce.dto.guest.GuestOrderDtos.GuestOrderRequest;
+import com.smart.ecommerce.dto.order.OrderDtos.*;
+import com.smart.ecommerce.entity.*;
+import com.smart.ecommerce.enums.*;
+import com.smart.ecommerce.exception.ResourceNotFoundException;
+import com.smart.ecommerce.repository.*;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+  private final CustomerContextService ctx;
+  private final InventoryService inventory;
+  private final CartRepository carts;
+  private final CartItemRepository cartItems;
+  private final ProductRepository products;
+  private final CustomerAddressRepository addresses;
+  private final OrderRepository orders;
+  private final OrderStatusHistoryRepository histories;
+  private final UserRepository users;
+  private final OrderNumberGenerator numbers;
+  private final OrderCalculationService calc;
+  private final OrderStatusTransitionService transitions;
+  private final OrderMapper mapper;
+  private final GuestOrderLinkService guestLinks;
+
+  @Transactional
+  public OrderResponse createPublic(PublicOrderRequest r) {
+    return createPublic(r, false);
+  }
+
+  @Transactional
+  public OrderResponse createGuest(GuestOrderRequest r) {
+    PublicOrderRequest request = new PublicOrderRequest(
+        r.customerName(), r.phoneNumber(),
+        new PublicOrderLocationRequest("Guest location", r.latitude(),
+                                       r.longitude(), null, null,
+                                       normalize(r.address())),
+        r.items(), null);
+    return createPublic(request, true);
+  }
+
+  private OrderResponse createPublic(PublicOrderRequest r,
+                                     boolean guestOrder) {
+    Map<Long, Integer> quantities = r.products().stream().collect(
+        Collectors.toMap(PublicOrderItemRequest::productId,
+                         PublicOrderItemRequest::quantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> locked = products.lockWithImagesByIdIn(ids).stream()
+        .collect(Collectors.toMap(Product::getId, Function.identity()));
+    if (locked.size() != ids.size())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+
+    Order o = new Order();
+    o.setOrderNumber(numbers.generate());
+    o.setStatus(OrderStatus.PENDING);
+    o.setGuestOrder(guestOrder);
+    o.setCustomerNote(r.customerNote());
+    o.setRecipientName(r.name().trim());
+    o.setPhoneNumber(r.phoneNumber().trim());
+    o.setCity(r.location().city().trim());
+    o.setLatitude(r.location().latitude());
+    o.setLongitude(r.location().longitude());
+    o.setArea(normalize(r.location().area()));
+    o.setStreet(normalize(r.location().street()));
+    o.setAdditionalDirections(
+        normalize(r.location().additionalDirections()));
+    populateItemsAndTotals(o, ids, quantities, locked);
+    addHistory(o, null, OrderStatus.PENDING, null, "PUBLIC", null, null);
+    Order saved = orders.saveAndFlush(o);
+    for (Long productId : ids)
+      inventory.recordOrderCreated(locked.get(productId),
+                                   quantities.get(productId), saved, null);
+    return mapper.toResponse(saved);
+  }
+
+  @Transactional
+  public OrderResponse create(CreateOrderRequest r) {
+    User u = ctx.currentCustomer();
+    if (u.getRole() != Role.CUSTOMER)
+      throw new IllegalArgumentException("order.error.customer_required");
+    Cart cart =
+        carts.lockByCustomerIdAndStatus(u.getId(), CartStatus.ACTIVE)
+            .orElseThrow(
+                () -> new IllegalArgumentException("order.error.empty_cart"));
+    if (cart.getItems().isEmpty())
+      throw new IllegalArgumentException("order.error.empty_cart");
+    CustomerAddress a =
+        addresses.findById(r.addressId())
+            .orElseThrow(()
+                             -> new ResourceNotFoundException(
+                                 "order.error.address_not_found"));
+    if (!a.isActive())
+      throw new IllegalArgumentException("order.error.address_inactive");
+    if (!a.getCustomer().getId().equals(u.getId()))
+      throw new ResourceNotFoundException("order.error.address_not_found");
+    Map<Long, Integer> quantities =
+        cart.getItems().stream().collect(Collectors.toMap(
+            i -> i.getProduct().getId(), CartItem::getQuantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> locked =
+        products.lockWithImagesByIdIn(ids).stream().collect(
+            Collectors.toMap(Product::getId, Function.identity()));
+    if (locked.size() != ids.size())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+    Order o = new Order();
+    o.setOrderNumber(numbers.generate());
+    o.setCustomer(u);
+    o.setStatus(OrderStatus.PENDING);
+    o.setCustomerNote(r.customerNote());
+    snapshotAddress(o, a);
+    populateItemsAndTotals(o, ids, quantities, locked);
+    addHistory(o, null, OrderStatus.PENDING, u, "CUSTOMER", null, null);
+    Order saved = orders.saveAndFlush(o);
+    for (Long productId : ids)
+      inventory.recordOrderCreated(locked.get(productId),
+                                   quantities.get(productId), saved, u);
+    cartItems.deleteByCartId(cart.getId());
+    return mapper.toResponse(saved);
+  }
+  private void populateItemsAndTotals(Order o, List<Long> ids,
+                                      Map<Long, Integer> quantities,
+                                      Map<Long, Product> locked) {
+    BigDecimal subtotal = BigDecimal.ZERO.setScale(3);
+    int totalItems = 0;
+    String currency = null;
+    for (Long productId : ids) {
+      Product p = locked.get(productId);
+      int quantity = quantities.get(productId);
+      validateProduct(p, quantity);
+      String c = CurrencyCode.defaultIfBlank(p.getCurrency());
+      if (currency == null)
+        currency = c;
+      else if (!currency.equals(c))
+        throw new IllegalArgumentException("order.error.mixed_currencies");
+      BigDecimal unit = calc.money(effectivePrice(p));
+      BigDecimal line = calc.line(unit, quantity);
+      OrderItem item = new OrderItem();
+      item.setOrder(o);
+      item.setProductId(p.getId());
+      item.setProductName(p.getNameEn());
+      item.setProductImageUrl(primary(p));
+      item.setQuantity(quantity);
+      item.setUnitPrice(unit);
+      item.setCurrency(c);
+      item.setLineTotal(line);
+      o.getItems().add(item);
+      subtotal = subtotal.add(line);
+      totalItems += quantity;
+    }
+    o.setCurrency(currency);
+    o.setSubtotal(calc.money(subtotal));
+    o.setDeliveryFee(calc.deliveryFee());
+    o.setDiscountAmount(calc.discount());
+    o.setTotalAmount(calc.money(o.getSubtotal()
+                                    .add(o.getDeliveryFee())
+                                    .subtract(o.getDiscountAmount())));
+    o.setTotalItems(totalItems);
+  }
+  @Transactional(readOnly = true)
+  public PaginationResponse<OrderSummaryResponse>
+  customerList(OrderStatus status, Pageable pageable) {
+    User u = ctx.currentCustomer();
+    Page<Order> page =
+        status == null ? orders.findByCustomerId(u.getId(), newest(pageable))
+                       : orders.findByCustomerIdAndStatus(u.getId(), status,
+                                                          newest(pageable));
+    return PaginationResponse.from(page.map(mapper::toSummary));
+  }
+  @Transactional(readOnly = true)
+  public OrderResponse customerGetNumber(String n) {
+    User u = ctx.currentCustomer();
+    return mapper.toResponse(
+        orders.findByOrderNumberAndCustomerId(n, u.getId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("order.error.not_found")));
+  }
+  @Transactional(readOnly = true)
+  public PaginationResponse<OrderSummaryResponse>
+  adminList(OrderStatus status, String num, String customer, Instant from,
+            Instant to, Pageable pageable) {
+    return PaginationResponse.from(orders
+                                       .searchAdmin(status, blank(num),
+                                                    blank(customer), from, to,
+                                                    newest(pageable))
+                                       .map(mapper::toSummary));
+  }
+  @Transactional(readOnly = true)
+  public OrderResponse adminGetNumber(String n) {
+    return mapper.toResponse(orders.findByOrderNumber(n).orElseThrow(
+        () -> new ResourceNotFoundException("order.error.not_found")));
+  }
+  @Transactional
+  public OrderResponse assignDelivery(String n, AssignDeliveryRequest r) {
+    User admin = ctx.currentCustomer();
+    Order o = orders.lockWithItemsByOrderNumber(n).orElseThrow(
+        () -> new ResourceNotFoundException("order.error.not_found"));
+    if (o.getStatus() != OrderStatus.PROCESSING &&
+        o.getStatus() != OrderStatus.OUT_FOR_DELIVERY)
+      throw new IllegalArgumentException(
+          "order.error.delivery_assignment_stage");
+    User d = users.findById(r.deliveryUserId())
+                 .filter(u
+                         -> u.getRole() == Role.DELIVERY &&
+                                u.getStatus() == UserStatus.ACTIVE)
+                 .orElseThrow(()
+                                  -> new IllegalArgumentException(
+                                      "order.error.invalid_delivery_user"));
+    o.setAssignedDeliveryUser(d);
+    addHistory(o, o.getStatus(), o.getStatus(), admin, "ADMIN",
+               "order.history.delivery_assigned", null);
+    return mapper.toResponse(o);
+  }
+  @Transactional
+  public OrderResponse adminStatus(String n, UpdateOrderStatusRequest r) {
+    User u = ctx.currentCustomer();
+    Order o = orders.lockWithItemsByOrderNumber(n).orElseThrow(
+        () -> new ResourceNotFoundException("order.error.not_found"));
+    return changeStatusAsAdmin(o, r, u);
+  }
+  @Transactional
+  public OrderResponse adminCancel(String n, CancelOrderRequest r) {
+    User u = ctx.currentCustomer();
+    Order o = orders.lockWithItemsByOrderNumber(n).orElseThrow(
+        () -> new ResourceNotFoundException("order.error.not_found"));
+    return cancel(o, r.reason(), u, "ADMIN", true);
+  }
+  @Transactional(readOnly = true)
+  public List<OrderStatusHistoryResponse> adminHistory(String n) {
+    Order o = orders.findByOrderNumber(n).orElseThrow(
+        () -> new ResourceNotFoundException("order.error.not_found"));
+    return histories.findByOrderIdOrderByChangedAtAsc(o.getId())
+        .stream()
+        .map(mapper::toHistory)
+        .toList();
+  }
+  @Transactional(readOnly = true)
+  public PaginationResponse<OrderSummaryResponse>
+  deliveryList(OrderStatus status, Pageable pageable) {
+    User u = ctx.currentCustomer();
+    Page<Order> page =
+        status == null
+            ? orders.findByAssignedDeliveryUserId(u.getId(), newest(pageable))
+            : orders.findByAssignedDeliveryUserIdAndStatus(u.getId(), status,
+                                                           newest(pageable));
+    return PaginationResponse.from(page.map(mapper::toSummary));
+  }
+  @Transactional(readOnly = true)
+  public OrderResponse deliveryGetNumber(String n) {
+    User u = ctx.currentCustomer();
+    return mapper.toResponse(
+        orders.findByOrderNumberAndAssignedDeliveryUserId(n, u.getId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("order.error.not_found")));
+  }
+  @Transactional
+  public OrderResponse deliveryStatus(String n, UpdateOrderStatusRequest r) {
+    User u = ctx.currentCustomer();
+    Order o =
+        orders.findByOrderNumberAndAssignedDeliveryUserId(n, u.getId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("order.error.not_found"));
+    if (r.status() != OrderStatus.COMPLETED && r.status() != OrderStatus.FAILED)
+      throw new IllegalArgumentException("order.error.delivery_status_only");
+    return changeStatus(o, r, u, "DELIVERY");
+  }
+  private OrderResponse changeStatus(Order o, UpdateOrderStatusRequest r,
+                                     User u, String role) {
+    transitions.validate(o.getStatus(), r.status());
+    if (r.status() == OrderStatus.OUT_FOR_DELIVERY &&
+        o.getAssignedDeliveryUser() == null)
+      throw new IllegalArgumentException("order.error.delivery_required");
+    if (r.status() == OrderStatus.FAILED && r.failureReason() == null)
+      throw new IllegalArgumentException("order.error.failure_reason_required");
+    if (r.failureReason() == DeliveryFailureReason.OTHER &&
+        (r.failureNote() == null || r.failureNote().isBlank()))
+      throw new IllegalArgumentException("order.error.failure_note_required");
+    OrderStatus prev = o.getStatus();
+    o.setStatus(r.status());
+    o.setFailureReason(r.status() == OrderStatus.FAILED ? r.failureReason()
+                                                        : null);
+    o.setFailureNote(r.status() == OrderStatus.FAILED ? r.failureNote() : null);
+    if (r.status() == OrderStatus.COMPLETED)
+      o.setCompletedAt(Instant.now());
+    addHistory(o, prev, r.status(), u, role, r.note(), r.failureReason());
+    return mapper.toResponse(o);
+  }
+  private OrderResponse changeStatusAsAdmin(Order o,
+                                            UpdateOrderStatusRequest r,
+                                            User u) {
+    OrderStatus prev = o.getStatus();
+    if (prev != OrderStatus.CANCELLED && r.status() == OrderStatus.CANCELLED)
+      adjustInventory(o, u, r.note(), 1);
+    else if (prev == OrderStatus.CANCELLED &&
+             r.status() != OrderStatus.CANCELLED)
+      adjustInventory(o, u, r.note(), -1);
+
+    o.setStatus(r.status());
+    o.setFailureReason(r.status() == OrderStatus.FAILED ? r.failureReason()
+                                                        : null);
+    o.setFailureNote(r.status() == OrderStatus.FAILED ? r.failureNote() : null);
+    o.setCancellationReason(r.status() == OrderStatus.CANCELLED ? r.note()
+                                                                : null);
+    o.setCancelledAt(r.status() == OrderStatus.CANCELLED ? Instant.now()
+                                                         : null);
+    o.setCompletedAt(r.status() == OrderStatus.COMPLETED ? Instant.now()
+                                                         : null);
+    addHistory(o, prev, r.status(), u, "ADMIN", r.note(), r.failureReason());
+    return mapper.toResponse(o);
+  }
+  private void adjustInventory(Order o, User u, String note, int direction) {
+    Map<Long, Integer> quantities =
+        o.getItems().stream().collect(Collectors.toMap(
+            OrderItem::getProductId, OrderItem::getQuantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> ps = products.lockWithImagesByIdIn(ids).stream().collect(
+        Collectors.toMap(Product::getId, Function.identity()));
+    if (ps.size() != ids.size())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+    for (Long id : ids)
+      inventory.recordOrderStatusAdjustment(
+          ps.get(id), direction * quantities.get(id), o, u, note);
+  }
+  private OrderResponse cancel(Order o, String reason, User u, String role,
+                               boolean admin) {
+    if (o.getStatus() == OrderStatus.CANCELLED)
+      return mapper.toResponse(o);
+    if (o.getStatus() == OrderStatus.COMPLETED)
+      throw new IllegalArgumentException("order.error.completed_final");
+    if (admin ? !transitions.canAdminCancel(o.getStatus())
+              : !transitions.canCustomerCancel(o.getStatus()))
+      throw new IllegalArgumentException("order.error.cannot_cancel");
+    restore(o, u);
+    OrderStatus prev = o.getStatus();
+    o.setStatus(OrderStatus.CANCELLED);
+    o.setCancellationReason(reason);
+    o.setCancelledAt(Instant.now());
+    addHistory(o, prev, OrderStatus.CANCELLED, u, role, reason, null);
+    return mapper.toResponse(o);
+  }
+  private void restore(Order o, User u) {
+    Map<Long, Integer> quantities =
+        o.getItems().stream().collect(Collectors.toMap(
+            OrderItem::getProductId, OrderItem::getQuantity, Integer::sum));
+    List<Long> ids = quantities.keySet().stream().sorted().toList();
+    Map<Long, Product> ps = products.lockWithImagesByIdIn(ids).stream().collect(
+        Collectors.toMap(Product::getId, Function.identity()));
+    for (Long id : ids) {
+      Product p = ps.get(id);
+      if (p != null)
+        inventory.recordOrderCancelled(p, quantities.get(id), o, u,
+                                       o.getCancellationReason());
+    }
+  }
+  private void validateProduct(Product p, int q) {
+    if (p.isDeleted())
+      throw new ResourceNotFoundException("order.error.product_not_found");
+    if (!p.isActive())
+      throw new IllegalArgumentException("order.error.product_inactive");
+    if (p.getStockQuantity() < q)
+      throw new IllegalArgumentException("order.error.insufficient_stock");
+    if (effectivePrice(p) == null ||
+        effectivePrice(p).compareTo(BigDecimal.ZERO) < 0)
+      throw new IllegalArgumentException("order.error.invalid_price");
+  }
+  private BigDecimal effectivePrice(Product p) {
+    return p.getDiscountPrice() == null ? p.getPrice() : p.getDiscountPrice();
+  }
+  private String primary(Product p) {
+    return p.getImages()
+        .stream()
+        .filter(ProductImage::isPrimaryImage)
+        .findFirst()
+        .or(() -> p.getImages().stream().findFirst())
+        .map(ProductImage::getImageUrl)
+        .orElse(null);
+  }
+  private void snapshotAddress(Order o, CustomerAddress a) {
+    o.setRecipientName(a.getRecipientName());
+    o.setPhoneNumber(a.getPhoneNumber());
+    o.setCity(a.getCity());
+    o.setLatitude(a.getLatitude());
+    o.setLongitude(a.getLongitude());
+    o.setArea(a.getArea());
+    o.setStreet(a.getStreet());
+    o.setAdditionalDirections(a.getAdditionalDirections());
+  }
+  private void addHistory(Order o, OrderStatus prev, OrderStatus next, User u,
+                          String role, String note,
+                          DeliveryFailureReason reason) {
+    OrderStatusHistory h = new OrderStatusHistory();
+    h.setOrder(o);
+    h.setPreviousStatus(prev);
+    h.setNewStatus(next);
+    h.setChangedByUserId(u == null ? null : u.getId());
+    h.setChangedByRole(role);
+    h.setNote(note);
+    h.setFailureReason(reason);
+    h.setChangedAt(Instant.now());
+    o.getStatusHistory().add(h);
+  }
+  private Pageable newest(Pageable p) {
+    return PageRequest.of(p.getPageNumber(), p.getPageSize(),
+                          p.getSort().isSorted()
+                              ? p.getSort()
+                              : Sort.by(Sort.Direction.DESC, "createdAt"));
+  }
+  private String blank(String s) { return s == null || s.isBlank() ? null : s; }
+  private String normalize(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
+  }
+}

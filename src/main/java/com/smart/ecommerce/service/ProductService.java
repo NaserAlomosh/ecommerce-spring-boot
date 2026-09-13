@@ -1,0 +1,304 @@
+package com.smart.ecommerce.service;
+
+import com.smart.ecommerce.config.FileStorageProperties;
+import com.smart.ecommerce.dto.PaginationResponse;
+import com.smart.ecommerce.dto.category.CategoryDtos.CategorySummary;
+import com.smart.ecommerce.dto.product.ProductDtos.*;
+import com.smart.ecommerce.entity.*;
+import com.smart.ecommerce.enums.CurrencyCode;
+import com.smart.ecommerce.exception.ResourceNotFoundException;
+import com.smart.ecommerce.repository.*;
+import com.smart.ecommerce.storage.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+
+@Service
+@RequiredArgsConstructor
+public class ProductService {
+  private final ProductRepository productRepository;
+  private final CategoryRepository categoryRepository;
+  private final ProductImageRepository imageRepository;
+  private final InventoryService inventoryService;
+  private final CustomerContextService customerContextService;
+  private final FileStorageService storageService;
+  private final FileStorageProperties properties;
+
+  @Transactional(readOnly = true)
+  public PaginationResponse<ProductResponse>
+  listPublic(Long categoryId, Boolean featured, Pageable pageable) {
+    var page =
+        categoryId == null
+            ? (featured == null
+                   ? productRepository.findByActiveTrueAndCategory_ActiveTrue(
+                         pageable)
+                   : productRepository
+                         .findByActiveTrueAndCategory_ActiveTrueAndFeatured(
+                             featured, pageable))
+            : (featured == null
+                   ? productRepository
+                         .findByActiveTrueAndCategory_ActiveTrueAndCategory_Id(
+                             categoryId, pageable)
+                   : productRepository
+                         .findByActiveTrueAndCategory_ActiveTrueAndCategory_IdAndFeatured(
+                             categoryId, featured, pageable));
+    return PaginationResponse.from(page.map(this::toResponse));
+  }
+
+  @Transactional(readOnly = true)
+  public PaginationResponse<ProductResponse>
+  listAvailable(Pageable pageable) {
+    return PaginationResponse.from(
+        productRepository
+            .findByActiveTrueAndDeletedFalseAndCategory_ActiveTrueAndStockQuantityGreaterThan(
+                0, pageable)
+            .map(this::toResponse));
+  }
+
+  @Transactional(readOnly = true)
+  public ProductResponse getPublic(Long productId) {
+    Product product =
+        productRepository.findWithImagesById(productId)
+            .filter(p -> p.isActive() && p.getCategory().isActive())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Product not found"));
+    return toResponse(product);
+  }
+
+  @Transactional
+  public ProductResponse create(ProductCreateRequest request,
+                                List<MultipartFile> images) {
+    validatePrices(request.price(), request.discountPrice());
+    List<StoredFile> stored = new ArrayList<>();
+    try {
+      Product product = new Product();
+      mapProductFields(request, product);
+      Category category =
+          categoryRepository.findById(request.categoryId())
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Category not found"));
+      if (!category.isActive())
+        throw new IllegalArgumentException("Product category must be active");
+      product.setCategory(category);
+      product = productRepository.save(product);
+      inventoryService.recordProductCreated(
+          product, request.stockQuantity(),
+          customerContextService.currentCustomer());
+      addImages(product, images, stored);
+      return toResponse(productRepository.save(product));
+    } catch (RuntimeException ex) {
+      stored.forEach(f -> storageService.delete(f.storagePath()));
+      throw ex;
+    }
+  }
+
+  @Transactional
+  public ProductResponse update(Long productId, ProductUpdateRequest request) {
+    validatePrices(request.price(), request.discountPrice());
+    Product product =
+        productRepository.lockWithImagesById(productId).orElseThrow(
+            () -> new ResourceNotFoundException("Product not found"));
+    Category category =
+        categoryRepository.findById(request.categoryId())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Category not found"));
+    if (!category.isActive())
+      throw new IllegalArgumentException("Product category must be active");
+    product.setCategory(category);
+    mapProductFields(request, product);
+    if (product.getStockQuantity() != request.stockQuantity())
+      inventoryService.recordProductStockUpdated(
+          product, request.stockQuantity(),
+          customerContextService.currentCustomer(),
+          "inventory.movement.product_updated");
+    return toResponse(productRepository.save(product));
+  }
+
+  @Transactional
+  public ProductResponse uploadImages(Long productId,
+                                      List<MultipartFile> files) {
+    Product product = findProduct(productId);
+    List<StoredFile> stored = new ArrayList<>();
+    try {
+      addImages(product, files, stored);
+      return toResponse(productRepository.save(product));
+    } catch (RuntimeException ex) {
+      stored.forEach(f -> storageService.delete(f.storagePath()));
+      throw ex;
+    }
+  }
+
+  @Transactional
+  public ProductResponse replaceImage(Long productId, Long imageId,
+                                      MultipartFile file) {
+    ProductImage image = findImage(productId, imageId);
+    StoredFile stored = storageService.storeProductImage(file);
+    deleteOnRollback(stored.storagePath());
+    String oldPath = image.getStoragePath();
+    try {
+      image.setImageUrl(stored.imageUrl());
+      image.setStoragePath(stored.storagePath());
+      image.setContentType(stored.contentType());
+      image.setFileSize(stored.fileSize());
+      imageRepository.save(image);
+      deleteAfterCommit(oldPath);
+      return toResponse(findProduct(productId));
+    } catch (RuntimeException ex) {
+      storageService.delete(stored.storagePath());
+      throw ex;
+    }
+  }
+
+  @Transactional
+  public ProductResponse setPrimary(Long productId, Long imageId) {
+    ProductImage selected = findImage(productId, imageId);
+    imageRepository.findByProductIdOrderBySortOrderAsc(productId).forEach(
+        i -> i.setPrimaryImage(i.getId().equals(selected.getId())));
+    return toResponse(findProduct(productId));
+  }
+  @Transactional
+  public ProductResponse reorder(Long productId, ImageOrderRequest request) {
+    List<ProductImage> images =
+        imageRepository.findByProductIdOrderBySortOrderAsc(productId);
+    Map<Long, ProductImage> byId = new HashMap<>();
+    images.forEach(i -> byId.put(i.getId(), i));
+    for (int i = 0; i < request.imageIds().size(); i++) {
+      ProductImage image = byId.get(request.imageIds().get(i));
+      if (image == null)
+        throw new ResourceNotFoundException("Product image not found");
+      image.setSortOrder(i);
+    }
+    return toResponse(findProduct(productId));
+  }
+  @Transactional
+  public void deleteImage(Long productId, Long imageId) {
+    ProductImage image = findImage(productId, imageId);
+    imageRepository.delete(image);
+    deleteAfterCommit(image.getStoragePath());
+  }
+
+  private void addImages(Product product, List<MultipartFile> files,
+                         List<StoredFile> stored) {
+    if (files == null || files.isEmpty())
+      return;
+    if (imageRepository.countByProductId(product.getId()) + files.size() >
+        properties.getMaxImagesPerProduct())
+      throw new IllegalArgumentException("Maximum images per product exceeded");
+    int next = product.getImages().size();
+    for (MultipartFile file : files) {
+      StoredFile sf = storageService.storeProductImage(file);
+      stored.add(sf);
+      deleteOnRollback(sf.storagePath());
+      ProductImage image = new ProductImage();
+      image.setProduct(product);
+      image.setImageUrl(sf.imageUrl());
+      image.setStoragePath(sf.storagePath());
+      image.setContentType(sf.contentType());
+      image.setFileSize(sf.fileSize());
+      image.setSortOrder(next++);
+      image.setPrimaryImage(product.getImages().isEmpty());
+      product.getImages().add(image);
+    }
+  }
+  private void deleteOnRollback(String path) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive())
+      return;
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            if (status != STATUS_COMMITTED)
+              storageService.delete(path);
+          }
+        });
+  }
+  private void deleteAfterCommit(String path) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      storageService.delete(path);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            storageService.delete(path);
+          }
+        });
+  }
+  private Product findProduct(Long id) {
+    return productRepository.findById(id).orElseThrow(
+        () -> new ResourceNotFoundException("Product not found"));
+  }
+  private ProductImage findImage(Long productId, Long imageId) {
+    ProductImage i = imageRepository.findById(imageId).orElseThrow(
+        () -> new ResourceNotFoundException("Product image not found"));
+    if (!i.getProduct().getId().equals(productId))
+      throw new ResourceNotFoundException("Product image not found");
+    return i;
+  }
+  private void mapProductFields(ProductCreateRequest r, Product p) {
+    p.setNameEn(r.nameEn());
+    p.setNameAr(r.nameAr());
+    p.setDescriptionEn(r.descriptionEn());
+    p.setDescriptionAr(r.descriptionAr());
+    p.setSku(r.sku());
+    p.setPrice(r.price());
+    p.setCurrency(CurrencyCode.defaultIfBlank(r.currency()));
+    p.setDiscountPrice(r.discountPrice());
+    p.setLowStockThreshold(r.lowStockThreshold());
+    p.setActive(r.active());
+    p.setFeatured(r.featured());
+  }
+  private void mapProductFields(ProductUpdateRequest r, Product p) {
+    p.setNameEn(r.nameEn());
+    p.setNameAr(r.nameAr());
+    p.setDescriptionEn(r.descriptionEn());
+    p.setDescriptionAr(r.descriptionAr());
+    p.setSku(r.sku());
+    p.setPrice(r.price());
+    p.setCurrency(CurrencyCode.defaultIfBlank(r.currency()));
+    p.setDiscountPrice(r.discountPrice());
+    p.setLowStockThreshold(r.lowStockThreshold());
+    p.setActive(r.active());
+    p.setFeatured(r.featured());
+  }
+  private void validatePrices(BigDecimal price, BigDecimal discount) {
+    if (discount != null && discount.compareTo(price) >= 0)
+      throw new IllegalArgumentException(
+          "discountPrice must be lower than price");
+  }
+  private ProductResponse toResponse(Product p) {
+    BigDecimal eff =
+        p.getDiscountPrice() == null ? p.getPrice() : p.getDiscountPrice();
+    BigDecimal pct = p.getDiscountPrice() == null
+                         ? BigDecimal.ZERO
+                         : p.getPrice()
+                               .subtract(p.getDiscountPrice())
+                               .multiply(BigDecimal.valueOf(100))
+                               .divide(p.getPrice(), 2, RoundingMode.HALF_UP);
+    Category category = p.getCategory();
+    return new ProductResponse(
+        p.getId(),
+        new CategorySummary(category.getId(), category.getNameEn(),
+                            category.getNameAr()),
+        p.getNameEn(), p.getNameAr(), p.getSku(), p.getPrice(), p.getCurrency(),
+        p.getDiscountPrice(), eff, pct, p.getStockQuantity(),
+        p.getLowStockThreshold(), p.getStockQuantity() > 0,
+        p.getStockQuantity() <= p.getLowStockThreshold(), p.isActive(),
+        p.isFeatured(), p.getAverageRating(), p.getReviewsCount(),
+        p.getImages()
+            .stream()
+            .map(i
+                 -> new ProductImageResponse(i.getId(), i.getImageUrl(),
+                                             i.isPrimaryImage(),
+                                             i.getSortOrder()))
+            .toList());
+  }
+}
