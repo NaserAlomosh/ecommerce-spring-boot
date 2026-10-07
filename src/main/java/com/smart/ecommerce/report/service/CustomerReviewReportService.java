@@ -1,0 +1,213 @@
+package com.smart.ecommerce.report.service;
+import com.smart.ecommerce.dto.PaginationResponse;
+import com.smart.ecommerce.enums.*;
+import com.smart.ecommerce.report.dto.CustomerReviewReportDtos.*;
+import com.smart.ecommerce.report.repository.*;
+import com.smart.ecommerce.report.util.*;
+import java.math.*;
+import java.time.*;
+import java.time.temporal.IsoFields;
+import java.util.*;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+@Service
+@Transactional(readOnly = true)
+public class CustomerReviewReportService {
+  private final CustomerReviewReportRepository repo;
+  private final CustomerReviewReportQueryRepository query;
+  private final DateRangeResolver ranges;
+  private final ReportProperties props;
+  public CustomerReviewReportService(CustomerReviewReportRepository r,
+                                     CustomerReviewReportQueryRepository q,
+                                     DateRangeResolver d, ReportProperties p) {
+    repo = r;
+    query = q;
+    ranges = d;
+    props = p;
+  }
+  public CustomerSummaryResponse customerSummary(Boolean active) {
+    var now = Instant.now();
+    var today = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant();
+    var month = LocalDate.now()
+                    .withDayOfMonth(1)
+                    .atStartOfDay(ZoneOffset.UTC)
+                    .toInstant();
+    var s = repo.customerSummary(today, month);
+    long without = s.getTotalCustomers() - s.getCustomersWithOrders();
+    var revenue = money(s.getRevenue());
+    return new CustomerSummaryResponse(
+        s.getTotalCustomers(), s.getActiveCustomers(), s.getInactiveCustomers(),
+        s.getCustomersWithOrders(), without, s.getNewToday(), s.getNewMonth(),
+        div(BigDecimal.valueOf(s.getCompletedOrders()), s.getTotalCustomers()),
+        div(revenue, s.getTotalCustomers()), revenue);
+  }
+  public List<TopCustomerResponse> top(ReportPeriod p, LocalDate f, LocalDate t,
+                                       Integer limit, String sort, String name,
+                                       Boolean active) {
+    var r = ranges.resolve(p, f, t);
+    int l = Math.min(limit == null ? 10 : limit, 100);
+    if (l < 1)
+      throw new IllegalArgumentException("report.error.invalid_limit");
+    Sort s = switch (sort == null ? "totalSpent" : sort) {
+      case "completedOrders" -> Sort.by(Sort.Direction.DESC, "completedOrde" +
+                                                               "rs");
+      case "averageOrderValue" -> Sort.by(Sort.Direction.DESC, "totalSpent");
+      default -> Sort.by(Sort.Direction.DESC, "totalSpent");
+    };
+    return repo
+        .topCustomers(r.startInclusive(), r.endExclusive(), blank(name), active,
+                      PageRequest.of(0, l, s))
+        .stream()
+        .map(x
+             -> new TopCustomerResponse(
+                 x.getCustomerId(), x.getFullName(), x.getCompletedOrders(),
+                 money(x.getTotalSpent()),
+                 div(x.getTotalSpent(), x.getCompletedOrders()),
+                 x.getTotalPurchasedItems(), x.getLastOrderDate()))
+        .toList();
+  }
+  public CustomerPurchaseHistoryResponse
+  history(Long id, ReportPeriod p, LocalDate f, LocalDate t, Pageable pg) {
+    var r = ranges.resolve(p, f, t);
+    var s = repo.historySummary(id, r.startInclusive(), r.endExclusive());
+    if (s == null)
+      throw new IllegalArgumentException("report.error.customer_not_found");
+    var sum = new CustomerHistorySummary(
+        s.getCustomerId(), s.getCustomerName(), s.getTotalOrders(),
+        s.getCompletedOrders(), s.getCancelledOrders(),
+        money(s.getTotalSpent()), s.getFirstOrderDate(), s.getLastOrderDate());
+    var page = repo.historyOrders(id, r.startInclusive(), r.endExclusive(), pg)
+                   .map(o
+                        -> new CustomerHistoryOrder(
+                            o.getOrderNumber(), o.getStatus(),
+                            money(o.getTotalAmount()), o.getCreatedAt(),
+                            o.getCompletedAt(), o.getItemsCount()));
+    return new CustomerPurchaseHistoryResponse(sum,
+                                               PaginationResponse.from(page));
+  }
+  public CustomerTrendResponse customerTrend(ReportPeriod p, LocalDate f,
+                                             LocalDate t, ReportGranularity g) {
+    var r = ranges.resolve(p, f, t);
+    return new CustomerTrendResponse(
+        r.dateFrom(), r.dateTo(), g,
+        fillCount(r, g,
+                  query.customerTrend(r.startInclusive(), r.endExclusive(), g,
+                                      r.zoneId())));
+  }
+  public ReviewsSummaryResponse reviewsSummary(Integer rating) {
+    var s = repo.reviewSummary(rating);
+    return new ReviewsSummaryResponse(
+        s.getTotalReviews(), money(s.getAverageRating()),
+        s.getProductsReviewed(), s.getCustomersReviewed(),
+        new RatingDistribution(s.getFiveStars(), s.getFourStars(),
+                               s.getThreeStars(), s.getTwoStars(),
+                               s.getOneStar()));
+  }
+  public ReviewTrendResponse reviewTrend(ReportPeriod p, LocalDate f,
+                                         LocalDate t, ReportGranularity g) {
+    var r = ranges.resolve(p, f, t);
+    Map<String, CustomerReviewReportQueryRepository.TrendRating> m =
+        new HashMap<>();
+    query.reviewTrend(r.startInclusive(), r.endExclusive(), g, r.zoneId())
+        .forEach(x -> m.put(x.label(), x));
+    List<ReviewTrendPoint> out = new ArrayList<>();
+    for (var c : slots(r, g)) {
+      var x = m.get(c.label());
+      out.add(new ReviewTrendPoint(
+          c.label(), c.periodStart(), x == null ? 0 : x.count(),
+          money(x == null ? BigDecimal.ZERO : x.avg())));
+    }
+    return new ReviewTrendResponse(r.dateFrom(), r.dateTo(), g, out);
+  }
+  public List<RatedProductResponse> rated(ReportPeriod p, LocalDate f,
+                                          LocalDate t, Integer limit,
+                                          String name, boolean lowest) {
+    var r = ranges.resolve(p, f, t);
+    Sort s = Sort.by(lowest ? Sort.Direction.ASC : Sort.Direction.DESC,
+                     "averageRating")
+                 .and(Sort.by(Sort.Direction.DESC, "totalReviews"));
+    return repo
+        .ratedProducts(
+            r.startInclusive(), r.endExclusive(), blank(name),
+            props.minProductReviews(),
+            PageRequest.of(0, Math.min(limit == null ? 10 : limit, 100), s))
+        .stream()
+        .map(x
+             -> new RatedProductResponse(x.getProductId(), x.getProductName(),
+                                         money(x.getAverageRating()),
+                                         x.getTotalReviews(),
+                                         x.getCurrentStock()))
+        .toList();
+  }
+  public PaginationResponse<ProductNoReviewsResponse>
+  noReviews(Long cat, String name, Pageable pg) {
+    return PaginationResponse.from(
+        repo.noReviews(cat, blank(name), pg)
+            .map(x
+                 -> new ProductNoReviewsResponse(
+                     x.getProductId(), x.getProductName(), x.getStock(),
+                     x.getCreatedAt())));
+  }
+  public PaginationResponse<MostReviewedProductResponse> most(String name,
+                                                              Pageable pg) {
+    return PaginationResponse.from(
+        repo.mostReviewed(blank(name), pg)
+            .map(x
+                 -> new MostReviewedProductResponse(
+                     x.getProductId(), x.getProductName(), x.getTotalReviews(),
+                     money(x.getAverageRating()))));
+  }
+  private List<CustomerTrendPoint>
+  fillCount(DateRangeResolver.ResolvedDateRange r, ReportGranularity g,
+            List<CustomerReviewReportQueryRepository.TrendCount> rows) {
+    Map<String, CustomerReviewReportQueryRepository.TrendCount> m =
+        new HashMap<>();
+    rows.forEach(x -> m.put(x.label(), x));
+    List<CustomerTrendPoint> out = new ArrayList<>();
+    for (var c : slots(r, g)) {
+      var x = m.get(c.label());
+      out.add(new CustomerTrendPoint(c.label(), c.periodStart(),
+                                     x == null ? 0 : x.count()));
+    }
+    return out;
+  }
+  private List<CustomerTrendPoint> slots(DateRangeResolver.ResolvedDateRange r,
+                                         ReportGranularity g) {
+    List<CustomerTrendPoint> out = new ArrayList<>();
+    ZonedDateTime z = r.dateFrom().atStartOfDay(r.zoneId()),
+                  end = r.dateTo().plusDays(1).atStartOfDay(r.zoneId());
+    while (z.isBefore(end)) {
+      out.add(new CustomerTrendPoint(label(z, g), z.toInstant(), 0));
+      z = switch (g) {
+        case HOUR -> z.plusHours(1);
+        case DAY -> z.plusDays(1);
+        case WEEK -> z.plusWeeks(1);
+        case MONTH -> z.plusMonths(1);
+        case YEAR -> z.plusYears(1);
+      };
+    }
+    return out;
+  }
+  private String label(ZonedDateTime z, ReportGranularity g) {
+    return switch (g) {
+      case HOUR ->
+        z.toLocalDate() + " " + String.format("%02d:00", z.getHour());
+      case DAY -> z.toLocalDate().toString();
+      case WEEK ->
+        z.get(IsoFields.WEEK_BASED_YEAR) + "-W" +
+            String.format("%02d", z.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+      case MONTH -> String.format("%04d-%02d", z.getYear(), z.getMonthValue());
+      case YEAR -> String.valueOf(z.getYear());
+    };
+  }
+  private BigDecimal money(BigDecimal b) {
+    return ReportMath.money(b == null ? BigDecimal.ZERO : b);
+  }
+  private BigDecimal div(BigDecimal a, long b) {
+    return ReportMath.divide(a == null ? BigDecimal.ZERO : a, b);
+  }
+  private String blank(String s) {
+    return s == null || s.isBlank() ? null : s.trim();
+  }
+}

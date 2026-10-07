@@ -1,0 +1,9 @@
+CREATE TABLE app_metadata (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    metadata_key VARCHAR(100) NOT NULL,
+    metadata_value VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_app_metadata_metadata_key UNIQUE (metadata_key)
+);

@@ -1,0 +1,30 @@
+package com.smart.ecommerce.entity;
+import jakarta.persistence.*;
+import java.time.Instant;
+import lombok.Getter;
+import lombok.Setter;
+@Getter
+@Setter
+@Entity
+@Table(name = "refresh_tokens",
+       indexes =
+       {
+         @Index(name = "idx_refresh_user", columnList = "user_id")
+         , @Index(name = "idx_refresh_hash", columnList = "token_hash")
+       })
+public class RefreshToken extends BaseEntity {
+  @ManyToOne(optional = false, fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
+  @Column(nullable = false, length = 128) private String tokenHash;
+  @Column(nullable = false) private Instant expiresAt;
+  private Instant revokedAt;
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "replaced_by_token_id")
+  private RefreshToken replacedByToken;
+  @Column(length = 64) private String createdByIp;
+  @Column(length = 64) private String revokedByIp;
+  public boolean active() {
+    return revokedAt == null && expiresAt.isAfter(Instant.now());
+  }
+}
